@@ -31,8 +31,8 @@ class StoresNotifier extends StateNotifier<StoresState> {
   final StoreApiService _apiService;
 
   StoresNotifier({StoreApiService? apiService})
-      : _apiService = apiService ?? storeApiService,
-        super(const StoresState()) {
+    : _apiService = apiService ?? storeApiService,
+      super(const StoresState()) {
     loadStores();
   }
 
@@ -49,7 +49,10 @@ class StoresNotifier extends StateNotifier<StoresState> {
     }
   }
 
-  Future<void> toggleStoreAcceptingOrders(String storeId, bool isAccepting) async {
+  Future<void> toggleStoreAcceptingOrders(
+    String storeId,
+    bool isAccepting,
+  ) async {
     final updated = await _apiService.toggleStoreOrders(storeId, isAccepting);
     if (updated != null) {
       state = state.copyWith(
@@ -59,12 +62,24 @@ class StoresNotifier extends StateNotifier<StoresState> {
   }
 }
 
-final storesProvider = StateNotifierProvider<StoresNotifier, StoresState>((ref) {
+final storesProvider = StateNotifierProvider<StoresNotifier, StoresState>((
+  ref,
+) {
   return StoresNotifier();
 });
 
 /// Fetches store menu items dynamically for a specific shop
-final storeMenuProvider = FutureProvider.family<List<ItemModel>, String>((ref, storeId) async {
-  return await storeApiService.getStoreMenu(storeId);
+final storeMenuProvider = FutureProvider.family<List<ItemModel>, String>((
+  ref,
+  storeId,
+) async {
+  final storeName =
+      ref
+          .watch(storesProvider)
+          .stores
+          .where((store) => store.id == storeId)
+          .firstOrNull
+          ?.name ??
+      '';
+  return await storeApiService.getStoreMenu(storeId, storeName: storeName);
 });
-

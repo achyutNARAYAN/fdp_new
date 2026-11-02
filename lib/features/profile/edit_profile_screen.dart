@@ -19,17 +19,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _dobController;
-  String _gender = 'Male';
+  String _gender = '';
   DateTime? _dob;
 
   @override
   void initState() {
     super.initState();
     final user = ref.read(authProvider).user;
-    _nameController = TextEditingController(text: user?.fullName ?? 'Aarav Sharma');
-    _emailController = TextEditingController(text: user?.email ?? 'aarav.sharma@example.com');
-    _dobController = TextEditingController(text: user?.dateOfBirth != null ? '${user!.dateOfBirth!.day}/${user.dateOfBirth!.month}/${user.dateOfBirth!.year}' : '14/08/1996');
-    _gender = user?.gender ?? 'Male';
+    _nameController = TextEditingController(text: user?.fullName ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
+    _dobController = TextEditingController(
+      text: user?.dateOfBirth != null
+          ? '${user!.dateOfBirth!.day}/${user.dateOfBirth!.month}/${user.dateOfBirth!.year}'
+          : '',
+    );
+    _gender = user?.gender ?? '';
   }
 
   @override
@@ -41,7 +45,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   void _saveProfile() {
-    ref.read(authProvider.notifier).updateProfile(
+    ref
+        .read(authProvider.notifier)
+        .updateProfile(
           _nameController.text.trim(),
           _emailController.text.trim(),
           _dob,
@@ -57,16 +63,27 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusDialog)),
-        title: const Text('Change Verified Mobile?', style: AppTypography.heading2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusDialog),
+        ),
+        title: const Text(
+          'Change Verified Mobile?',
+          style: AppTypography.heading2,
+        ),
         content: const Text(
           'Changing your registered Indian mobile number requires fresh OTP verification.',
           style: AppTypography.body,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: AppColors.onPrimary),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.onPrimary,
+            ),
             onPressed: () {
               Navigator.pop(ctx);
               context.push('/login');
@@ -108,7 +125,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusInput),
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusInput,
+                      ),
                       border: Border.all(color: AppColors.neutralLight),
                     ),
                     child: Row(
@@ -117,14 +136,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Verified Mobile Number', style: AppTypography.caption),
+                            const Text(
+                              'Verified Mobile Number',
+                              style: AppTypography.caption,
+                            ),
                             const SizedBox(height: 2),
-                            Text(user?.mobileNumber ?? '+91 98765 43210', style: AppTypography.itemName),
+                            Text(
+                              user?.mobileNumber ?? '+91 98765 43210',
+                              style: AppTypography.itemName,
+                            ),
                           ],
                         ),
                         TextButton(
                           onPressed: _promptMobileChange,
-                          child: const Text('Change', style: TextStyle(color: AppColors.textPrimary)),
+                          child: const Text(
+                            'Change',
+                            style: TextStyle(color: AppColors.textPrimary),
+                          ),
                         ),
                       ],
                     ),
@@ -146,14 +174,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate: DateTime(1996, 8, 14),
+                        initialDate:
+                            _dob ??
+                            ref.read(authProvider).user?.dateOfBirth ??
+                            DateTime.now(),
                         firstDate: DateTime(1940),
                         lastDate: DateTime.now(),
                       );
                       if (picked != null) {
                         setState(() {
                           _dob = picked;
-                          _dobController.text = '${picked.day}/${picked.month}/${picked.year}';
+                          _dobController.text =
+                              '${picked.day}/${picked.month}/${picked.year}';
                         });
                       }
                     },
@@ -162,7 +194,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
                   const SizedBox(height: 20),
 
-                  const Text('Gender (Optional)', style: AppTypography.itemName),
+                  const Text(
+                    'Gender (Optional)',
+                    style: AppTypography.itemName,
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     children: ['Male', 'Female', 'Prefer not to say'].map((g) {
@@ -174,16 +209,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             margin: const EdgeInsets.symmetric(horizontal: 4),
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primaryTint20 : AppColors.surface,
+                              color: isSelected
+                                  ? AppColors.primaryTint20
+                                  : AppColors.surface,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: isSelected ? AppColors.primary : AppColors.neutralBorder),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.neutralBorder,
+                              ),
                             ),
                             alignment: Alignment.center,
                             child: Text(
                               g,
                               style: TextStyle(
                                 fontSize: 12,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                                 color: AppColors.textPrimary,
                               ),
                             ),
@@ -205,7 +248,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               decoration: const BoxDecoration(
                 color: AppColors.surface,
                 boxShadow: [
-                  BoxShadow(color: Color(0x14171A14), offset: Offset(0, -4), blurRadius: 16),
+                  BoxShadow(
+                    color: Color(0x14171A14),
+                    offset: Offset(0, -4),
+                    blurRadius: 16,
+                  ),
                 ],
               ),
               child: AppPrimaryButton(
@@ -219,4 +266,3 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 }
-

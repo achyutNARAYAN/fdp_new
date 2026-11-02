@@ -1,14 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/notification_model.dart';
-import '../data/mock_data.dart';
 
 class NotificationNotifier extends StateNotifier<List<NotificationItemModel>> {
-  NotificationNotifier() : super(MockData.getInitialNotifications());
+  NotificationNotifier() : super(const []);
 
   int get unreadCount => state.where((n) => !n.isRead).length;
 
   void markAsRead(String id) {
-    state = state.map((n) => n.id == id ? n.copyWith(isRead: true) : n).toList();
+    state = state
+        .map((n) => n.id == id ? n.copyWith(isRead: true) : n)
+        .toList();
   }
 
   void markAllAsRead() {
@@ -16,7 +17,9 @@ class NotificationNotifier extends StateNotifier<List<NotificationItemModel>> {
   }
 }
 
-final notificationProvider = StateNotifierProvider<NotificationNotifier, List<NotificationItemModel>>((ref) {
-  return NotificationNotifier();
-});
-
+final notificationProvider =
+    StateNotifierProvider<NotificationNotifier, List<NotificationItemModel>>((
+      ref,
+    ) {
+      return NotificationNotifier();
+    });

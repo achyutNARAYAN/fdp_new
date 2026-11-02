@@ -9,21 +9,21 @@ import '../../shared/models/order_model.dart';
 import '../../shared/providers/order_provider.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
 import '../../shared/widgets/buttons/app_secondary_button.dart';
+import '../../shared/widgets/layout/no_order_data.dart';
 
 class ShopDeclinedOrderScreen extends ConsumerWidget {
   final String orderId;
 
-  const ShopDeclinedOrderScreen({
-    super.key,
-    required this.orderId,
-  });
+  const ShopDeclinedOrderScreen({super.key, required this.orderId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderState = ref.watch(orderProvider);
     final order = orderState.activeOrder;
-    final bool isPaid = order?.paymentStatus == PaymentStatus.paid ||
-        order?.paymentStatus == PaymentStatus.refundInitiated;
+    if (order == null) return const NoOrderData();
+    final bool isPaid =
+        order.paymentStatus == PaymentStatus.paid ||
+        order.paymentStatus == PaymentStatus.refundInitiated;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -42,13 +42,17 @@ class ShopDeclinedOrderScreen extends ConsumerWidget {
                   color: AppColors.neutralLight,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.store_mall_directory_outlined, size: 48, color: AppColors.neutralBorder),
+                child: const Icon(
+                  Icons.store_mall_directory_outlined,
+                  size: 48,
+                  color: AppColors.neutralBorder,
+                ),
               ),
 
               const SizedBox(height: 24),
 
               Text(
-                '${order?.shopName ?? "The shop"} couldn’t accept your order',
+                '${order.shopName ?? "The shop"} couldn’t accept your order',
                 style: AppTypography.heading1,
                 textAlign: TextAlign.center,
               ),
@@ -73,16 +77,23 @@ class ShopDeclinedOrderScreen extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.verified, color: AppColors.primary, size: 22),
+                      const Icon(
+                        Icons.verified,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Payment Already Received', style: AppTypography.itemName),
+                            const Text(
+                              'Payment Already Received',
+                              style: AppTypography.itemName,
+                            ),
                             const SizedBox(height: 2),
                             Text(
-                              'Full reversal of ${Formatters.formatCurrency(order?.totalAmount ?? 824.50)} has been initiated to your original bank account.',
+                              'Full reversal of ${Formatters.formatCurrency(order.totalAmount)} has been initiated to your original bank account.',
                               style: AppTypography.caption,
                             ),
                           ],
@@ -111,7 +122,10 @@ class ShopDeclinedOrderScreen extends ConsumerWidget {
 
               TextButton(
                 onPressed: () => context.push('/support'),
-                child: const Text('Contact Customer Support', style: TextStyle(color: AppColors.textPrimary)),
+                child: const Text(
+                  'Contact Customer Support',
+                  style: TextStyle(color: AppColors.textPrimary),
+                ),
               ),
             ],
           ),
@@ -120,4 +134,3 @@ class ShopDeclinedOrderScreen extends ConsumerWidget {
     );
   }
 }
-

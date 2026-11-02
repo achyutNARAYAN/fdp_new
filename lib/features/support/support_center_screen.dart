@@ -21,25 +21,6 @@ class SupportCenterScreen extends ConsumerWidget {
     {'title': 'Account & Privacy', 'icon': Icons.person_outline},
   ];
 
-  static const List<Map<String, String>> _faqs = [
-    {
-      'q': 'How does the 3-minute shop confirmation work?',
-      'a': 'When you place an order, our live kitchen terminal notifies the shop confectioner. They verify fresh batches and kitchen inventory within 3 minutes (03:00). If accepted, preparation begins immediately.'
-    },
-    {
-      'q': 'What happens if ice cream or gelato melts?',
-      'a': 'All ice creams and desserts are packed in insulated thermal pouches. If an item arrives melted due to traffic delays, you can report it within 2 hours with a photo for an immediate reversal.'
-    },
-    {
-      'q': 'Can I cancel an order once placed?',
-      'a': 'Cancellation is 100% free while the order is waiting for confirmation. Once preparation starts, cancellation may not be possible, especially for custom engraved cakes.'
-    },
-    {
-      'q': 'When will my refund reflect in my account?',
-      'a': 'UPI refunds typically credit back within 2–4 hours. Card and Net Banking refunds take 2–4 business days depending on your bank clearing cycle.'
-    },
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderState = ref.watch(orderProvider);
@@ -69,7 +50,10 @@ class SupportCenterScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Need help with your current order?', style: AppTypography.itemName),
+                    const Text(
+                      'Need help with your current order?',
+                      style: AppTypography.itemName,
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       'Order #${activeOrder.orderId} from ${activeOrder.shopName}',
@@ -83,10 +67,20 @@ class SupportCenterScreen extends ConsumerWidget {
                             style: OutlinedButton.styleFrom(
                               backgroundColor: Colors.white,
                               side: const BorderSide(color: AppColors.primary),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
-                            onPressed: () => context.push('/order-tracking/${activeOrder.orderId}'),
-                            child: const Text('Track Order Status', style: TextStyle(color: AppColors.textPrimary, fontSize: 12)),
+                            onPressed: () => context.push(
+                              '/order-tracking/${activeOrder.orderId}',
+                            ),
+                            child: const Text(
+                              'Track Order Status',
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -95,10 +89,17 @@ class SupportCenterScreen extends ConsumerWidget {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: AppColors.onPrimary,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
-                            onPressed: () => context.push('/raise-ticket?orderId=${activeOrder.orderId}'),
-                            child: const Text('Report Issue', style: TextStyle(fontSize: 12)),
+                            onPressed: () => context.push(
+                              '/raise-ticket?orderId=${activeOrder.orderId}',
+                            ),
+                            child: const Text(
+                              'Report Issue',
+                              style: TextStyle(fontSize: 12),
+                            ),
                           ),
                         ),
                       ],
@@ -114,7 +115,10 @@ class SupportCenterScreen extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Your Support Tickets', style: AppTypography.sectionTitle),
+                  const Text(
+                    'Your Support Tickets',
+                    style: AppTypography.sectionTitle,
+                  ),
                   Text('${tickets.length} total', style: AppTypography.caption),
                 ],
               ),
@@ -132,18 +136,37 @@ class SupportCenterScreen extends ConsumerWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.chat_bubble_outline, color: AppColors.accent, size: 20),
+                        const Icon(
+                          Icons.chat_bubble_outline,
+                          color: AppColors.accent,
+                          size: 20,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Ticket #${t.ticketId} • ${t.category.label}', style: AppTypography.itemName.copyWith(fontSize: 13)),
-                              Text(t.description, style: AppTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                              Text(
+                                'Ticket #${t.ticketId} • ${t.category.label}',
+                                style: AppTypography.itemName.copyWith(
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                t.description,
+                                style: AppTypography.caption,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ],
                           ),
                         ),
-                        StatusChip(label: t.status.label, type: t.status.name == 'resolved' ? StatusChipType.success : StatusChipType.pending),
+                        StatusChip(
+                          label: t.status.label,
+                          type: t.status.name == 'resolved'
+                              ? StatusChipType.success
+                              : StatusChipType.pending,
+                        ),
                       ],
                     ),
                   ),
@@ -172,45 +195,25 @@ class SupportCenterScreen extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(cat['icon'] as IconData, size: 22, color: AppColors.primary),
+                      Icon(
+                        cat['icon'] as IconData,
+                        size: 22,
+                        color: AppColors.primary,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           cat['title'] as String,
-                          style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          style: AppTypography.caption.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 );
               }).toList(),
-            ),
-
-            const SizedBox(height: 24),
-
-            // FAQs
-            const Text('Frequently Asked Questions', style: AppTypography.sectionTitle),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-                border: Border.all(color: AppColors.neutralLight),
-              ),
-              child: Column(
-                children: _faqs.map((faq) {
-                  return ExpansionTile(
-                    title: Text(faq['q']!, style: AppTypography.itemName.copyWith(fontSize: 14)),
-                    childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(faq['a']!, style: AppTypography.bodySmall.copyWith(height: 1.4)),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
             ),
 
             const SizedBox(height: 24),
@@ -229,4 +232,3 @@ class SupportCenterScreen extends ConsumerWidget {
     );
   }
 }
-

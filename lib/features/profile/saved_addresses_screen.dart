@@ -11,20 +11,41 @@ import '../../shared/widgets/buttons/app_primary_button.dart';
 class SavedAddressesScreen extends ConsumerWidget {
   const SavedAddressesScreen({super.key});
 
-  void _confirmDelete(BuildContext context, WidgetRef ref, AddressModel address) {
+  void _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    AddressModel address,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusDialog)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusDialog),
+        ),
         title: const Text('Delete Address?', style: AppTypography.heading2),
         content: Text('Are you sure you want to remove "${address.title}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: Colors.white),
-            onPressed: () {
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
               Navigator.pop(ctx);
-              ref.read(addressListProvider.notifier).deleteAddress(address.id);
+              try {
+                await ref
+                    .read(addressListProvider.notifier)
+                    .deleteAddress(address.id);
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Could not delete address: $e')),
+                );
+              }
             },
             child: const Text('Delete'),
           ),
@@ -47,7 +68,12 @@ class SavedAddressesScreen extends ConsumerWidget {
         children: [
           Expanded(
             child: addresses.isEmpty
-                ? const Center(child: Text('No saved addresses yet', style: AppTypography.bodySmall))
+                ? const Center(
+                    child: Text(
+                      'No saved addresses yet',
+                      style: AppTypography.bodySmall,
+                    ),
+                  )
                 : ListView.builder(
                     padding: const EdgeInsets.all(AppDimensions.p16),
                     itemCount: addresses.length,
@@ -58,7 +84,9 @@ class SavedAddressesScreen extends ConsumerWidget {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                          borderRadius: BorderRadius.circular(
+                            AppDimensions.radiusCard,
+                          ),
                           border: Border.all(color: AppColors.neutralLight),
                           boxShadow: AppDimensions.elevationLevel1,
                         ),
@@ -70,7 +98,9 @@ class SavedAddressesScreen extends ConsumerWidget {
                                 Icon(
                                   addr.type == AddressType.home
                                       ? Icons.home_outlined
-                                      : (addr.type == AddressType.work ? Icons.work_outline : Icons.place_outlined),
+                                      : (addr.type == AddressType.work
+                                            ? Icons.work_outline
+                                            : Icons.place_outlined),
                                   color: AppColors.textPrimary,
                                   size: 20,
                                 ),
@@ -79,35 +109,71 @@ class SavedAddressesScreen extends ConsumerWidget {
                                 if (addr.isDefault) ...[
                                   const SizedBox(width: 8),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: AppColors.primaryTint20,
                                       borderRadius: BorderRadius.circular(4),
                                     ),
-                                    child: const Text('DEFAULT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                                    child: const Text(
+                                      'DEFAULT',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ],
                                 const Spacer(),
                                 PopupMenuButton<String>(
-                                  onSelected: (val) {
+                                  onSelected: (val) async {
                                     if (val == 'default') {
-                                      ref.read(addressListProvider.notifier).setDefault(addr.id);
+                                      try {
+                                        await ref
+                                            .read(addressListProvider.notifier)
+                                            .setDefault(addr.id);
+                                      } catch (e) {
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Could not update default address: $e',
+                                            ),
+                                          ),
+                                        );
+                                      }
                                     } else if (val == 'delete') {
                                       _confirmDelete(context, ref, addr);
                                     }
                                   },
                                   itemBuilder: (ctx) => [
                                     if (!addr.isDefault)
-                                      const PopupMenuItem(value: 'default', child: Text('Set as Default')),
-                                    const PopupMenuItem(value: 'delete', child: Text('Delete Address')),
+                                      const PopupMenuItem(
+                                        value: 'default',
+                                        child: Text('Set as Default'),
+                                      ),
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Text('Delete Address'),
+                                    ),
                                   ],
                                 ),
                               ],
                             ),
                             const SizedBox(height: 6),
-                            Text(addr.fullAddress, style: AppTypography.bodySmall),
+                            Text(
+                              addr.fullAddress,
+                              style: AppTypography.bodySmall,
+                            ),
                             const SizedBox(height: 4),
-                            Text('Contact: ${addr.contactName} (${addr.contactPhone})', style: AppTypography.caption),
+                            Text(
+                              'Contact: ${addr.contactName} (${addr.contactPhone})',
+                              style: AppTypography.caption,
+                            ),
                           ],
                         ),
                       );
@@ -123,7 +189,11 @@ class SavedAddressesScreen extends ConsumerWidget {
               decoration: const BoxDecoration(
                 color: AppColors.surface,
                 boxShadow: [
-                  BoxShadow(color: Color(0x14171A14), offset: Offset(0, -4), blurRadius: 16),
+                  BoxShadow(
+                    color: Color(0x14171A14),
+                    offset: Offset(0, -4),
+                    blurRadius: 16,
+                  ),
                 ],
               ),
               child: AppPrimaryButton(
@@ -138,4 +208,3 @@ class SavedAddressesScreen extends ConsumerWidget {
     );
   }
 }
-

@@ -5,7 +5,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
-import '../../shared/models/order_model.dart';
 import '../../shared/providers/cart_provider.dart';
 import '../../shared/providers/location_provider.dart';
 import '../../shared/widgets/badges/diet_marker.dart';
@@ -20,8 +19,6 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   final TextEditingController _noteController = TextEditingController();
-  PaymentMethodType _selectedPaymentMethod = PaymentMethodType.upi;
-  double _selectedTip = 0.0;
 
   @override
   void dispose() {
@@ -29,13 +26,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     super.dispose();
   }
 
-  void _handlePay() {
-    if (_selectedPaymentMethod == PaymentMethodType.cod) {
-      context.push('/cod-placement');
-    } else {
-      context.push('/payment-processing?method=${_selectedPaymentMethod.name}');
-    }
-  }
+  void _handlePay() => context.push('/payment-method');
 
   @override
   Widget build(BuildContext context) {
@@ -67,13 +58,23 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.location_on, color: AppColors.accent, size: 20),
+                            const Icon(
+                              Icons.location_on,
+                              color: AppColors.accent,
+                              size: 20,
+                            ),
                             const SizedBox(width: 8),
-                            Text(selectedAddress.title, style: AppTypography.itemName),
+                            Text(
+                              selectedAddress?.title ?? 'No address selected',
+                              style: AppTypography.itemName,
+                            ),
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(selectedAddress.fullAddress, style: AppTypography.bodySmall),
+                        Text(
+                          selectedAddress?.fullAddress ?? '',
+                          style: AppTypography.bodySmall,
+                        ),
                       ],
                     ),
                   ),
@@ -93,8 +94,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Deliver Now', style: AppTypography.itemName),
-                              Text('Confectionery ready in 25–35 min', style: AppTypography.caption),
+                              Text(
+                                'Delivery details unavailable',
+                                style: AppTypography.itemName,
+                              ),
                             ],
                           ),
                         ),
@@ -125,7 +128,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               ),
                               Text(
                                 Formatters.formatCurrency(ci.totalPrice),
-                                style: AppTypography.itemName.copyWith(fontSize: 14),
+                                style: AppTypography.itemName.copyWith(
+                                  fontSize: 14,
+                                ),
                               ),
                             ],
                           ),
@@ -142,7 +147,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     content: TextField(
                       controller: _noteController,
                       decoration: const InputDecoration(
-                        hintText: 'e.g. Leave with gate security / Do not ring bell',
+                        hintText:
+                            'e.g. Leave with gate security / Do not ring bell',
                         hintStyle: AppTypography.bodySmall,
                         border: InputBorder.none,
                       ),
@@ -151,75 +157,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
                   const SizedBox(height: 12),
 
-                  // 5. Delivery Partner Tip Selector (₹0 allowed)
-                  _buildSectionCard(
-                    title: 'Add Delivery Partner Tip',
-                    content: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '100% of your tip goes to the delivery partner. Tips are non-refundable once delivered.',
-                          style: AppTypography.caption,
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [0.0, 20.0, 30.0, 50.0].map((tip) {
-                            final isSelected = _selectedTip == tip;
-                            return Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() => _selectedTip = tip);
-                                  ref.read(cartProvider.notifier).setTip(tip);
-                                },
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? AppColors.primaryTint20 : AppColors.surface,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: isSelected ? AppColors.primary : AppColors.neutralBorder,
-                                      width: isSelected ? 1.5 : 1,
-                                    ),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    tip == 0.0 ? 'No Tip' : '+₹${tip.toInt()}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // 6. Payment Method Card
                   _buildSectionCard(
                     title: 'Payment Method',
-                    actionLabel: 'Change',
-                    onAction: () => context.push('/payment-method'),
-                    content: Row(
-                      children: [
-                        Icon(
-                          _selectedPaymentMethod == PaymentMethodType.cod
-                              ? Icons.currency_rupee
-                              : Icons.account_balance_wallet_outlined,
-                          color: AppColors.accent,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(_selectedPaymentMethod.label, style: AppTypography.itemName),
-                        ),
-                      ],
+                    content: const Text(
+                      'No payment methods were returned by the API.',
                     ),
                   ),
 
@@ -230,21 +171,44 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     title: 'Price Breakdown',
                     content: Column(
                       children: [
-                        _priceRow('Item Total', Formatters.formatCurrency(cart.subtotal)),
+                        _priceRow(
+                          'Item Total',
+                          Formatters.formatCurrency(cart.subtotal),
+                        ),
                         if (cart.discountAmount > 0)
-                          _priceRow('Coupon Discount', '-${Formatters.formatCurrency(cart.discountAmount)}',
-                              textColor: AppColors.accentPressed),
-                        _priceRow('Delivery Partner Fee', Formatters.formatCurrency(cart.deliveryFee)),
-                        _priceRow('Confectionery Packaging', Formatters.formatCurrency(cart.packagingFee)),
-                        _priceRow('Platform Fee', Formatters.formatCurrency(cart.platformFee)),
-                        _priceRow('Taxes (5% GST)', Formatters.formatCurrency(cart.taxes)),
-                        if (_selectedTip > 0)
-                          _priceRow('Delivery Tip', Formatters.formatCurrency(_selectedTip)),
+                          _priceRow(
+                            'Coupon Discount',
+                            '-${Formatters.formatCurrency(cart.discountAmount)}',
+                            textColor: AppColors.accentPressed,
+                          ),
+                        if (cart.deliveryFee != null)
+                          _priceRow(
+                            'Delivery Partner Fee',
+                            Formatters.formatCurrency(cart.deliveryFee!),
+                          ),
+                        if (cart.packagingFee != null)
+                          _priceRow(
+                            'Confectionery Packaging',
+                            Formatters.formatCurrency(cart.packagingFee!),
+                          ),
+                        if (cart.platformFee != null)
+                          _priceRow(
+                            'Platform Fee',
+                            Formatters.formatCurrency(cart.platformFee!),
+                          ),
+                        if (cart.taxes != null)
+                          _priceRow(
+                            'Taxes',
+                            Formatters.formatCurrency(cart.taxes!),
+                          ),
                         const Divider(height: 20),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Grand Total', style: AppTypography.heading2),
+                            const Text(
+                              'Grand Total',
+                              style: AppTypography.heading2,
+                            ),
                             Text(
                               Formatters.formatCurrency(cart.grandTotal),
                               style: AppTypography.price.copyWith(fontSize: 22),
@@ -261,7 +225,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   const Center(
                     child: Text(
                       'FSSAI Certified Kitchens • Safe Cold-Chain Handover • GST Invoices',
-                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -280,13 +247,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               decoration: const BoxDecoration(
                 color: AppColors.surface,
                 boxShadow: [
-                  BoxShadow(color: Color(0x14171A14), offset: Offset(0, -4), blurRadius: 16),
+                  BoxShadow(
+                    color: Color(0x14171A14),
+                    offset: Offset(0, -4),
+                    blurRadius: 16,
+                  ),
                 ],
               ),
               child: AppPrimaryButton(
-                label: _selectedPaymentMethod == PaymentMethodType.cod
-                    ? 'Place COD Order • ${Formatters.formatCurrency(cart.grandTotal)}'
-                    : 'Pay ${Formatters.formatCurrency(cart.grandTotal)}',
+                label: 'Payment options',
                 onPressed: _handlePay,
               ),
             ),
@@ -323,7 +292,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     visualDensity: VisualDensity.compact,
                   ),
                   onPressed: onAction,
-                  child: Text(actionLabel, style: const TextStyle(color: AppColors.textPrimary)),
+                  child: Text(
+                    actionLabel,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                  ),
                 ),
             ],
           ),

@@ -15,7 +15,8 @@ class ApiConfig {
 
   /// Google OAuth Web Client ID (from Google Cloud Console)
   /// If provided, Android Google Play Services returns an OpenID idToken for the backend
-  static const String? googleServerClientId = null;
+  static const String googleServerClientId =
+      '251374570662-1doulus75vv493d0o572e8vkndjdbtc0.apps.googleusercontent.com';
 
   /// Enable full API request/response logging in terminal
   static bool enableLogging = true;
@@ -67,4 +68,3 @@ class ApiConfig {
     }
   }
 }
-

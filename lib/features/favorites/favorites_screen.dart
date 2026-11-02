@@ -5,7 +5,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
-import '../../shared/data/mock_data.dart';
+import '../../shared/providers/catalog_provider.dart';
+import '../../shared/providers/store_provider.dart';
 import '../../shared/models/order_model.dart';
 import '../../shared/providers/favorites_provider.dart';
 import '../../shared/providers/order_provider.dart';
@@ -21,7 +22,8 @@ class FavoritesScreen extends ConsumerStatefulWidget {
   ConsumerState<FavoritesScreen> createState() => _FavoritesScreenState();
 }
 
-class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTickerProviderStateMixin {
+class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -43,13 +45,23 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTi
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusDialog)),
-          title: const Text('Replace existing cart?', style: AppTypography.heading2),
-          content: Text('Reordering from ${order.shopName} will replace items currently in your cart.'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusDialog),
+          ),
+          title: const Text(
+            'Replace existing cart?',
+            style: AppTypography.heading2,
+          ),
+          content: Text(
+            'Reordering from ${order.shopName} will replace items currently in your cart.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -73,7 +85,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTi
   void _applyReorder(OrderModel order) {
     if (order.items.isNotEmpty) {
       final first = order.items.first;
-      ref.read(cartProvider.notifier).replaceCartWithItem(
+      ref
+          .read(cartProvider.notifier)
+          .replaceCartWithItem(
             item: first.item,
             variant: first.selectedVariant,
             quantity: first.quantity,
@@ -87,8 +101,16 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTi
     final favState = ref.watch(favoritesProvider);
     final orderState = ref.watch(orderProvider);
 
-    final favItems = MockData.allItems.where((i) => favState.favoriteItemIds.contains(i.id)).toList();
-    final favShops = MockData.shops.where((s) => favState.favoriteShopIds.contains(s.id)).toList();
+    final favItems = ref
+        .watch(catalogProvider)
+        .items
+        .where((i) => favState.favoriteItemIds.contains(i.id))
+        .toList();
+    final favShops = ref
+        .watch(storesProvider)
+        .stores
+        .where((s) => favState.favoriteShopIds.contains(s.id))
+        .toList();
     final pastOrders = orderState.pastOrders;
 
     return Scaffold(
@@ -115,7 +137,10 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTi
         children: [
           // 1. Favorite Items Tab
           favItems.isEmpty
-              ? _buildEmptyState('No favorite sweets yet', 'Heart any item while browsing to save it here.')
+              ? _buildEmptyState(
+                  'No favorite sweets yet',
+                  'Heart any item while browsing to save it here.',
+                )
               : GridView.builder(
                   padding: const EdgeInsets.all(AppDimensions.p16),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -136,7 +161,10 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTi
 
           // 2. Favorite Shops Tab
           favShops.isEmpty
-              ? _buildEmptyState('No favorite sweet shops yet', 'Save sweet parlours and patisseries you love.')
+              ? _buildEmptyState(
+                  'No favorite sweet shops yet',
+                  'Save sweet parlours and patisseries you love.',
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(AppDimensions.p16),
                   itemCount: favShops.length,
@@ -151,7 +179,10 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTi
 
           // 3. Past Orders & 1-Tap Reorder
           pastOrders.isEmpty
-              ? _buildEmptyState('No previous orders', 'Place an order to quickly reorder your favourites here.')
+              ? _buildEmptyState(
+                  'No previous orders',
+                  'Place an order to quickly reorder your favourites here.',
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(AppDimensions.p16),
                   itemCount: pastOrders.length,
@@ -162,8 +193,13 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTi
                       padding: const EdgeInsets.all(AppDimensions.p16),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-                        border: Border.all(color: AppColors.neutralLight, width: 1),
+                        borderRadius: BorderRadius.circular(
+                          AppDimensions.radiusCard,
+                        ),
+                        border: Border.all(
+                          color: AppColors.neutralLight,
+                          width: 1,
+                        ),
                         boxShadow: AppDimensions.elevationLevel1,
                       ),
                       child: Column(
@@ -172,10 +208,17 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTi
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(order.shopName, style: AppTypography.heading2.copyWith(fontSize: 16)),
+                              Text(
+                                order.shopName,
+                                style: AppTypography.heading2.copyWith(
+                                  fontSize: 16,
+                                ),
+                              ),
                               Text(
                                 Formatters.formatCurrency(order.totalAmount),
-                                style: AppTypography.price.copyWith(fontSize: 16),
+                                style: AppTypography.price.copyWith(
+                                  fontSize: 16,
+                                ),
                               ),
                             ],
                           ),
@@ -186,7 +229,12 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTi
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            order.items.map((i) => '${i.quantity}x ${i.item.name} (${i.selectedVariant.label})').join(', '),
+                            order.items
+                                .map(
+                                  (i) =>
+                                      '${i.quantity}x ${i.item.name} (${i.selectedVariant.label})',
+                                )
+                                .join(', '),
                             style: AppTypography.bodySmall,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -204,11 +252,23 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTi
                               const SizedBox(width: 10),
                               OutlinedButton(
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
                                 ),
-                                onPressed: () => context.push('/order-details/${order.orderId}'),
-                                child: const Text('Details', style: TextStyle(color: AppColors.textPrimary)),
+                                onPressed: () => context.push(
+                                  '/order-details/${order.orderId}',
+                                ),
+                                child: const Text(
+                                  'Details',
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -229,11 +289,19 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTi
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.favorite_border, size: 54, color: AppColors.neutral),
+            const Icon(
+              Icons.favorite_border,
+              size: 54,
+              color: AppColors.neutral,
+            ),
             const SizedBox(height: 16),
             Text(title, style: AppTypography.heading2),
             const SizedBox(height: 8),
-            Text(subtitle, style: AppTypography.bodySmall, textAlign: TextAlign.center),
+            Text(
+              subtitle,
+              style: AppTypography.bodySmall,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 24),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -249,4 +317,3 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> with SingleTi
     );
   }
 }
-

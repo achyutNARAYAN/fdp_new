@@ -11,27 +11,28 @@ import '../../shared/providers/order_provider.dart';
 import '../../shared/widgets/badges/diet_marker.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
 import '../../shared/widgets/buttons/app_secondary_button.dart';
+import '../../shared/widgets/layout/no_order_data.dart';
 
 class ShopProposedChangesScreen extends ConsumerStatefulWidget {
   final String orderId;
 
-  const ShopProposedChangesScreen({
-    super.key,
-    required this.orderId,
-  });
+  const ShopProposedChangesScreen({super.key, required this.orderId});
 
   @override
-  ConsumerState<ShopProposedChangesScreen> createState() => _ShopProposedChangesScreenState();
+  ConsumerState<ShopProposedChangesScreen> createState() =>
+      _ShopProposedChangesScreenState();
 }
 
-class _ShopProposedChangesScreenState extends ConsumerState<ShopProposedChangesScreen> {
+class _ShopProposedChangesScreenState
+    extends ConsumerState<ShopProposedChangesScreen> {
   bool _acceptSubstitute = true;
 
   @override
   Widget build(BuildContext context) {
     final orderState = ref.watch(orderProvider);
     final order = orderState.activeOrder;
-    final bool isPaid = order?.paymentStatus == PaymentStatus.paid;
+    if (order == null) return const NoOrderData();
+    final bool isPaid = order.paymentStatus == PaymentStatus.paid;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -58,16 +59,23 @@ class _ShopProposedChangesScreenState extends ConsumerState<ShopProposedChangesS
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.announcement, color: AppColors.accent, size: 24),
+                        const Icon(
+                          Icons.announcement,
+                          color: AppColors.accent,
+                          size: 24,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Action Required', style: AppTypography.itemName),
+                              const Text(
+                                'Action Required',
+                                style: AppTypography.itemName,
+                              ),
                               const SizedBox(height: 2),
                               Text(
-                                '${order?.shopName ?? "Anand Sweets"} proposed modifications. This order will NEVER proceed automatically.',
+                                order.shopName ?? '',
                                 style: AppTypography.bodySmall,
                               ),
                             ],
@@ -80,18 +88,27 @@ class _ShopProposedChangesScreenState extends ConsumerState<ShopProposedChangesS
                   const SizedBox(height: 20),
 
                   // Card 1: Available Items
-                  const Text('Available Items', style: AppTypography.sectionTitle),
+                  const Text(
+                    'Available Items',
+                    style: AppTypography.sectionTitle,
+                  ),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusCard,
+                      ),
                       border: Border.all(color: AppColors.neutralLight),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.check_circle, color: AppColors.primary, size: 20),
+                        const Icon(
+                          Icons.check_circle,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
                         const SizedBox(width: 10),
                         const Expanded(
                           child: Text(
@@ -99,7 +116,10 @@ class _ShopProposedChangesScreenState extends ConsumerState<ShopProposedChangesS
                             style: AppTypography.itemName,
                           ),
                         ),
-                        Text(Formatters.formatCurrency(210.0), style: AppTypography.caption),
+                        Text(
+                          Formatters.formatCurrency(210.0),
+                          style: AppTypography.caption,
+                        ),
                       ],
                     ),
                   ),
@@ -107,21 +127,32 @@ class _ShopProposedChangesScreenState extends ConsumerState<ShopProposedChangesS
                   const SizedBox(height: 20),
 
                   // Card 2: Unavailable Item
-                  const Text('Unavailable Item', style: AppTypography.sectionTitle),
+                  const Text(
+                    'Unavailable Item',
+                    style: AppTypography.sectionTitle,
+                  ),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.accentTint12,
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-                      border: Border.all(color: AppColors.accent.withOpacity(0.5)),
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusCard,
+                      ),
+                      border: Border.all(
+                        color: AppColors.accent.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.remove_circle_outline, color: AppColors.accent, size: 20),
+                            Icon(
+                              Icons.remove_circle_outline,
+                              color: AppColors.accent,
+                              size: 20,
+                            ),
                             SizedBox(width: 10),
                             Expanded(
                               child: Text(
@@ -139,7 +170,10 @@ class _ShopProposedChangesScreenState extends ConsumerState<ShopProposedChangesS
                         const SizedBox(height: 6),
                         const Text(
                           'Reason: Fresh evening batch sold out due to high counter rush.',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -148,15 +182,22 @@ class _ShopProposedChangesScreenState extends ConsumerState<ShopProposedChangesS
                   const SizedBox(height: 20),
 
                   // Card 3: Suggested Substitute
-                  const Text('Suggested Substitute by Chef', style: AppTypography.sectionTitle),
+                  const Text(
+                    'Suggested Substitute by Chef',
+                    style: AppTypography.sectionTitle,
+                  ),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusCard,
+                      ),
                       border: Border.all(
-                        color: _acceptSubstitute ? AppColors.primary : AppColors.neutralBorder,
+                        color: _acceptSubstitute
+                            ? AppColors.primary
+                            : AppColors.neutralBorder,
                         width: _acceptSubstitute ? 1.5 : 1.0,
                       ),
                       boxShadow: AppDimensions.elevationLevel1,
@@ -185,11 +226,15 @@ class _ShopProposedChangesScreenState extends ConsumerState<ShopProposedChangesS
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Accept this substitute?', style: TextStyle(fontWeight: FontWeight.w600)),
+                            const Text(
+                              'Accept this substitute?',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
                             Switch(
                               value: _acceptSubstitute,
                               activeColor: AppColors.primary,
-                              onChanged: (val) => setState(() => _acceptSubstitute = val),
+                              onChanged: (val) =>
+                                  setState(() => _acceptSubstitute = val),
                             ),
                           ],
                         ),
@@ -212,9 +257,15 @@ class _ShopProposedChangesScreenState extends ConsumerState<ShopProposedChangesS
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Adjusted Total', style: AppTypography.caption),
+                            const Text(
+                              'Adjusted Total',
+                              style: AppTypography.caption,
+                            ),
                             Text(
-                              Formatters.formatCurrency((order?.totalAmount ?? 824.5) - (_acceptSubstitute ? 0 : 580)),
+                              Formatters.formatCurrency(
+                                order.totalAmount -
+                                    (_acceptSubstitute ? 0 : 580),
+                              ),
                               style: AppTypography.price.copyWith(fontSize: 18),
                             ),
                           ],
@@ -223,7 +274,10 @@ class _ShopProposedChangesScreenState extends ConsumerState<ShopProposedChangesS
                           isPaid
                               ? 'Difference will be refunded to original account.'
                               : 'COD collection amount adjusted.',
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -241,7 +295,11 @@ class _ShopProposedChangesScreenState extends ConsumerState<ShopProposedChangesS
             decoration: const BoxDecoration(
               color: AppColors.surface,
               boxShadow: [
-                BoxShadow(color: Color(0x14171A14), offset: Offset(0, -4), blurRadius: 16),
+                BoxShadow(
+                  color: Color(0x14171A14),
+                  offset: Offset(0, -4),
+                  blurRadius: 16,
+                ),
               ],
             ),
             child: Column(
@@ -260,7 +318,11 @@ class _ShopProposedChangesScreenState extends ConsumerState<ShopProposedChangesS
                   borderColor: AppColors.accent,
                   textColor: AppColors.accent,
                   onPressed: () {
-                    ref.read(orderProvider.notifier).cancelOrder(reason: 'Did not accept shop proposed item changes');
+                    ref
+                        .read(orderProvider.notifier)
+                        .cancelOrder(
+                          reason: 'Did not accept shop proposed item changes',
+                        );
                     context.go('/order-details/${widget.orderId}');
                   },
                 ),

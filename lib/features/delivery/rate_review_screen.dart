@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
+import '../../shared/providers/order_provider.dart';
+import '../../shared/widgets/layout/no_order_data.dart';
 
-class RateReviewScreen extends StatefulWidget {
+class RateReviewScreen extends ConsumerStatefulWidget {
   final String orderId;
 
-  const RateReviewScreen({
-    super.key,
-    required this.orderId,
-  });
+  const RateReviewScreen({super.key, required this.orderId});
 
   @override
-  State<RateReviewScreen> createState() => _RateReviewScreenState();
+  ConsumerState<RateReviewScreen> createState() => _RateReviewScreenState();
 }
 
-class _RateReviewScreenState extends State<RateReviewScreen> {
-  int _foodRating = 5;
-  int _partnerRating = 5;
+class _RateReviewScreenState extends ConsumerState<RateReviewScreen> {
+  int _foodRating = 0;
+  int _partnerRating = 0;
   final TextEditingController _commentController = TextEditingController();
-  final Set<String> _selectedTags = {'Fresh & Pure', 'Cold Preserved'};
+  final Set<String> _selectedTags = {};
 
   static const List<String> _tags = [
     'Fresh & Pure',
@@ -39,17 +39,18 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
   }
 
   void _submitReview() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Thank you! Your feedback helps our artisanal confectioners.'),
-        backgroundColor: AppColors.textPrimary,
-      ),
-    );
-    context.go('/home');
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Review API is unavailable.')));
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasOrder = ref
+        .watch(orderProvider)
+        .pastOrders
+        .any((order) => order.orderId == widget.orderId);
+    if (!hasOrder) return const NoOrderData();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -58,7 +59,10 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
         actions: [
           TextButton(
             onPressed: () => context.go('/home'),
-            child: const Text('Skip', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              'Skip',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
         ],
       ),
@@ -77,7 +81,10 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
               ),
               child: Column(
                 children: [
-                  const Text('How were the sweets & packaging?', style: AppTypography.itemName),
+                  const Text(
+                    'How were the sweets & packaging?',
+                    style: AppTypography.itemName,
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -88,7 +95,9 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         icon: Icon(
                           star <= _foodRating ? Icons.star : Icons.star_border,
-                          color: star <= _foodRating ? AppColors.accent : AppColors.neutral,
+                          color: star <= _foodRating
+                              ? AppColors.accent
+                              : AppColors.neutral,
                         ),
                         onPressed: () => setState(() => _foodRating = star),
                       );
@@ -104,18 +113,35 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.info_outline, size: 16, color: AppColors.accent),
+                          const Icon(
+                            Icons.info_outline,
+                            size: 16,
+                            color: AppColors.accent,
+                          ),
                           const SizedBox(width: 8),
                           const Expanded(
                             child: Text(
                               'Was something wrong with the taste, freshness or temperature?',
-                              style: TextStyle(fontSize: 11, color: AppColors.textPrimary),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
                           ),
                           TextButton(
-                            style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                            onPressed: () => context.push('/raise-ticket?orderId=${widget.orderId}'),
-                            child: const Text('Report Issue', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold)),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                            ),
+                            onPressed: () => context.push(
+                              '/raise-ticket?orderId=${widget.orderId}',
+                            ),
+                            child: const Text(
+                              'Report Issue',
+                              style: TextStyle(
+                                color: AppColors.accent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -137,7 +163,10 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
               ),
               child: Column(
                 children: [
-                  const Text('Rate Delivery Partner (Vikram Singh)', style: AppTypography.itemName),
+                  const Text(
+                    'Rate Delivery Partner',
+                    style: AppTypography.itemName,
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -147,8 +176,12 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
                         iconSize: 36,
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         icon: Icon(
-                          star <= _partnerRating ? Icons.star : Icons.star_border,
-                          color: star <= _partnerRating ? AppColors.accent : AppColors.neutral,
+                          star <= _partnerRating
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: star <= _partnerRating
+                              ? AppColors.accent
+                              : AppColors.neutral,
                         ),
                         onPressed: () => setState(() => _partnerRating = star),
                       );
@@ -173,7 +206,11 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
                   selected: isChosen,
                   selectedColor: AppColors.primaryTint20,
                   backgroundColor: AppColors.surface,
-                  side: BorderSide(color: isChosen ? AppColors.primary : AppColors.neutralBorder),
+                  side: BorderSide(
+                    color: isChosen
+                        ? AppColors.primary
+                        : AppColors.neutralBorder,
+                  ),
                   labelStyle: TextStyle(
                     fontSize: 12,
                     fontWeight: isChosen ? FontWeight.bold : FontWeight.normal,
@@ -195,18 +232,24 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
             const SizedBox(height: 20),
 
             // Optional Comment Box
-            const Text('Comments or Notes for Kitchen', style: AppTypography.itemName),
+            const Text(
+              'Comments or Notes for Kitchen',
+              style: AppTypography.itemName,
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _commentController,
               maxLines: 3,
               decoration: InputDecoration(
-                hintText: 'Share what you loved about this artisanal sweet order...',
+                hintText:
+                    'Share what you loved about this artisanal sweet order...',
                 hintStyle: AppTypography.bodySmall,
                 filled: true,
                 fillColor: AppColors.surface,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusInput),
+                  borderRadius: BorderRadius.circular(
+                    AppDimensions.radiusInput,
+                  ),
                   borderSide: const BorderSide(color: AppColors.neutralBorder),
                 ),
               ),
@@ -214,14 +257,10 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
 
             const SizedBox(height: 24),
 
-            AppPrimaryButton(
-              label: 'Submit Review',
-              onPressed: _submitReview,
-            ),
+            AppPrimaryButton(label: 'Submit Review', onPressed: _submitReview),
           ],
         ),
       ),
     );
   }
 }
-

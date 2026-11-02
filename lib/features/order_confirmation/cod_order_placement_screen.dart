@@ -5,9 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
-import '../../shared/models/order_model.dart';
 import '../../shared/providers/cart_provider.dart';
-import '../../shared/providers/order_provider.dart';
 import '../../shared/providers/location_provider.dart';
 import '../../shared/widgets/badges/status_chip.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
@@ -33,19 +31,16 @@ class CodOrderPlacementScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const StatusChip(
-                label: 'COD Pending • Confectioner Approval Required',
-                type: StatusChipType.pending,
+                label: 'Order placement is unavailable.',
+                type: StatusChipType.info,
               ),
               const SizedBox(height: 16),
 
-              const Text(
-                'Order Placed for Cash on Delivery',
-                style: AppTypography.heading1,
-              ),
+              const Text('Cash on Delivery', style: AppTypography.heading1),
               const SizedBox(height: 8),
 
               const Text(
-                'Your order will be transmitted to the shop for standard 3-minute kitchen confirmation.',
+                'Order placement will be available when the order API is connected.',
                 style: AppTypography.bodySmall,
               ),
               const SizedBox(height: 24),
@@ -60,17 +55,26 @@ class CodOrderPlacementScreen extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.currency_rupee, size: 28, color: AppColors.accent),
+                    const Icon(
+                      Icons.currency_rupee,
+                      size: 28,
+                      color: AppColors.accent,
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Exact Cash Collection', style: AppTypography.itemName),
+                          const Text(
+                            'Exact Cash Collection',
+                            style: AppTypography.itemName,
+                          ),
                           const SizedBox(height: 2),
                           Text(
                             'Please keep ${Formatters.formatCurrency(cart.grandTotal)} ready at handover.',
-                            style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.bold),
+                            style: AppTypography.bodySmall.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -90,10 +94,12 @@ class CodOrderPlacementScreen extends ConsumerWidget {
                 ),
                 child: Column(
                   children: [
-                    _row('Shop', cart.shopName ?? 'Anand Sweets'),
+                    _row('Shop', cart.shopName ?? ''),
                     _row('Total Items', '${cart.totalItemCount} items'),
-                    _row('Delivery Address', location.selectedAddress.title),
-                    _row('Est. Delivery Time', '30–40 min'),
+                    _row(
+                      'Delivery Address',
+                      location.selectedAddress?.title ?? '',
+                    ),
                   ],
                 ),
               ),
@@ -101,16 +107,8 @@ class CodOrderPlacementScreen extends ConsumerWidget {
               const Spacer(),
 
               AppPrimaryButton(
-                label: 'Transmit to Shop for Confirmation',
-                onPressed: () {
-                  final newOrder = ref.read(orderProvider.notifier).placeOrder(
-                        cart: cart,
-                        paymentMethod: PaymentMethodType.cod,
-                        deliveryAddress: location.selectedAddress.fullAddress,
-                      );
-                  ref.read(cartProvider.notifier).clearCart();
-                  context.go('/waiting-confirmation/${newOrder.orderId}');
-                },
+                label: 'Back to cart',
+                onPressed: () => context.go('/cart'),
               ),
             ],
           ),

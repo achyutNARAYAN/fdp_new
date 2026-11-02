@@ -13,13 +13,15 @@ class ProfileCompletionScreen extends ConsumerStatefulWidget {
   const ProfileCompletionScreen({super.key});
 
   @override
-  ConsumerState<ProfileCompletionScreen> createState() => _ProfileCompletionScreenState();
+  ConsumerState<ProfileCompletionScreen> createState() =>
+      _ProfileCompletionScreenState();
 }
 
-class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScreen> {
+class _ProfileCompletionScreenState
+    extends ConsumerState<ProfileCompletionScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
-  bool _termsAccepted = true;
+  bool _termsAccepted = false;
 
   String? _nameError;
   String? _phoneError;
@@ -38,15 +40,24 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
 
     final name = _nameController.text.trim();
     if (name.length < 2) {
-      setState(() => _nameError = 'Please enter your full name (minimum 2 characters).');
+      setState(
+        () =>
+            _nameError = 'Please enter your full name (minimum 2 characters).',
+      );
       hasError = true;
     } else {
       setState(() => _nameError = null);
     }
 
-    final phone = _phoneController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
+    final phone = _phoneController.text.trim().replaceAll(
+      RegExp(r'[^0-9]'),
+      '',
+    );
     if (phone.length != 10 || !RegExp(r'^[6-9][0-9]{9}$').hasMatch(phone)) {
-      setState(() => _phoneError = 'Please enter a valid 10-digit Indian mobile number.');
+      setState(
+        () =>
+            _phoneError = 'Please enter a valid 10-digit Indian mobile number.',
+      );
       hasError = true;
     } else {
       setState(() => _phoneError = null);
@@ -54,7 +65,9 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
 
     if (!_termsAccepted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please accept terms and conditions to proceed.')),
+        const SnackBar(
+          content: Text('Please accept terms and conditions to proceed.'),
+        ),
       );
       return;
     }
@@ -64,9 +77,13 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
       final authState = ref.read(authProvider);
 
       if (authState.status == AuthStatus.needsProfile) {
-        await ref.read(authProvider.notifier).completeRegistration(name: name, phone: phone);
+        await ref
+            .read(authProvider.notifier)
+            .completeRegistration(name: name, phone: phone);
       } else {
-        await ref.read(authProvider.notifier).updateProfile(name, null, null, null);
+        await ref
+            .read(authProvider.notifier)
+            .updateProfile(name, null, null, null);
       }
 
       if (mounted) {
@@ -116,7 +133,12 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Full Name', style: AppTypography.itemName),
-                        Text('Required', style: AppTypography.caption.copyWith(color: AppColors.accent)),
+                        Text(
+                          'Required',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.accent,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -125,7 +147,11 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
                       label: 'Full Name',
                       hint: 'e.g. Aarav Sharma',
                       errorText: _nameError,
-                      prefix: const Icon(Icons.person_outline, size: 20, color: AppColors.textSecondary),
+                      prefix: const Icon(
+                        Icons.person_outline,
+                        size: 20,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: 20),
 
@@ -133,8 +159,16 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Mobile Number', style: AppTypography.itemName),
-                        Text('Required', style: AppTypography.caption.copyWith(color: AppColors.accent)),
+                        const Text(
+                          'Mobile Number',
+                          style: AppTypography.itemName,
+                        ),
+                        Text(
+                          'Required',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.accent,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -142,9 +176,13 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
                       height: AppDimensions.heightInput,
                       decoration: BoxDecoration(
                         color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusInput),
+                        borderRadius: BorderRadius.circular(
+                          AppDimensions.radiusInput,
+                        ),
                         border: Border.all(
-                          color: _phoneError != null ? AppColors.accent : AppColors.neutralBorder,
+                          color: _phoneError != null
+                              ? AppColors.accent
+                              : AppColors.neutralBorder,
                           width: _phoneError != null ? 2.0 : 1.5,
                         ),
                       ),
@@ -161,17 +199,26 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Container(width: 1, height: 24, color: AppColors.neutralLight),
+                          Container(
+                            width: 1,
+                            height: 24,
+                            color: AppColors.neutralLight,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextField(
                               controller: _phoneController,
                               keyboardType: TextInputType.phone,
                               maxLength: 10,
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                              style: AppTypography.body.copyWith(fontWeight: FontWeight.w600),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              style: AppTypography.body.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
                               onChanged: (_) {
-                                if (_phoneError != null) setState(() => _phoneError = null);
+                                if (_phoneError != null)
+                                  setState(() => _phoneError = null);
                               },
                               decoration: const InputDecoration(
                                 hintText: '10-digit mobile number',
@@ -189,12 +236,18 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(Icons.error_outline, size: 14, color: AppColors.accent),
+                          const Icon(
+                            Icons.error_outline,
+                            size: 14,
+                            color: AppColors.accent,
+                          ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               _phoneError!,
-                              style: AppTypography.caption.copyWith(color: AppColors.textPrimary),
+                              style: AppTypography.caption.copyWith(
+                                color: AppColors.textPrimary,
+                              ),
                             ),
                           ),
                         ],
@@ -211,12 +264,15 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
                           value: _termsAccepted,
                           activeColor: AppColors.primary,
                           checkColor: AppColors.onPrimary,
-                          onChanged: (val) => setState(() => _termsAccepted = val ?? true),
+                          onChanged: (val) =>
+                              setState(() => _termsAccepted = val ?? true),
                         ),
                         Expanded(
                           child: Text(
                             'I accept the Terms & Conditions and Privacy Policy for sweets and perishable ordering.',
-                            style: AppTypography.bodySmall.copyWith(fontSize: 12),
+                            style: AppTypography.bodySmall.copyWith(
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],

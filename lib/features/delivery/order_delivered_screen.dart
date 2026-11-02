@@ -11,20 +11,19 @@ import '../../shared/providers/cart_provider.dart';
 import '../../shared/widgets/badges/payment_status_badge.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
 import '../../shared/widgets/buttons/app_secondary_button.dart';
+import '../../shared/widgets/layout/no_order_data.dart';
 
 class OrderDeliveredScreen extends ConsumerWidget {
   final String orderId;
 
-  const OrderDeliveredScreen({
-    super.key,
-    required this.orderId,
-  });
+  const OrderDeliveredScreen({super.key, required this.orderId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderState = ref.watch(orderProvider);
     final order = orderState.activeOrder;
-    final paymentStatus = order?.paymentMethod == PaymentMethodType.cod
+    if (order == null) return const NoOrderData();
+    final paymentStatus = order.paymentMethod == PaymentMethodType.cod
         ? PaymentStatus.codCollected
         : PaymentStatus.paid;
 
@@ -46,7 +45,11 @@ class OrderDeliveredScreen extends ConsumerWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.primary, width: 2),
                 ),
-                child: const Icon(Icons.check_circle, size: 52, color: AppColors.primary),
+                child: const Icon(
+                  Icons.check_circle,
+                  size: 52,
+                  color: AppColors.primary,
+                ),
               ),
 
               const SizedBox(height: 20),
@@ -82,10 +85,15 @@ class OrderDeliveredScreen extends ConsumerWidget {
                 child: Column(
                   children: [
                     _row('Order ID', '#$orderId'),
-                    _row('Confectionery Shop', order?.shopName ?? 'Anand Sweets'),
-                    _row('Items Count', '${order?.items.length ?? 2} items'),
-                    _row('Total Paid', Formatters.formatCurrency(order?.totalAmount ?? 824.50)),
-                    _row('Delivered To', order?.deliveryAddress ?? 'Indiranagar, Bengaluru'),
+                    _row('Confectionery Shop', order.shopName ?? ''),
+                    _row('Items Count', '${order.items.length ?? 0} items'),
+                    _row(
+                      'Total Paid',
+                      order == null
+                          ? ''
+                          : Formatters.formatCurrency(order.totalAmount),
+                    ),
+                    _row('Delivered To', order.deliveryAddress ?? ''),
                   ],
                 ),
               ),
@@ -101,7 +109,10 @@ class OrderDeliveredScreen extends ConsumerWidget {
                 ),
                 child: Text(
                   'Freshness guarantee: You can report any item or temperature issue until ${Formatters.formatTime(DateTime.now().add(const Duration(hours: 3)))}.',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -121,7 +132,8 @@ class OrderDeliveredScreen extends ConsumerWidget {
                     child: AppSecondaryButton(
                       label: 'Report Issue',
                       icon: Icons.flag_outlined,
-                      onPressed: () => context.push('/raise-ticket?orderId=$orderId'),
+                      onPressed: () =>
+                          context.push('/raise-ticket?orderId=$orderId'),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -141,7 +153,9 @@ class OrderDeliveredScreen extends ConsumerWidget {
                 onPressed: () {
                   if (order != null && order.items.isNotEmpty) {
                     final first = order.items.first;
-                    ref.read(cartProvider.notifier).replaceCartWithItem(
+                    ref
+                        .read(cartProvider.notifier)
+                        .replaceCartWithItem(
                           item: first.item,
                           variant: first.selectedVariant,
                           quantity: first.quantity,
@@ -149,7 +163,13 @@ class OrderDeliveredScreen extends ConsumerWidget {
                     context.push('/cart');
                   }
                 },
-                child: const Text('Reorder These Items', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Reorder These Items',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
@@ -168,7 +188,10 @@ class OrderDeliveredScreen extends ConsumerWidget {
           Flexible(
             child: Text(
               value,
-              style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: AppTypography.caption.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -177,4 +200,3 @@ class OrderDeliveredScreen extends ConsumerWidget {
     );
   }
 }
-

@@ -13,11 +13,15 @@ class OtpVerificationScreen extends ConsumerStatefulWidget {
   const OtpVerificationScreen({super.key});
 
   @override
-  ConsumerState<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  ConsumerState<OtpVerificationScreen> createState() =>
+      _OtpVerificationScreenState();
 }
 
 class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
-  final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _controllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   int _secondsRemaining = 30;
   Timer? _timer;
@@ -78,14 +82,17 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
       }
     } else {
       setState(() {
-        _errorMessage = ref.read(authProvider).errorMessage ?? 'That code isn’t right. Try 123456 or 000000 for demo.';
+        _errorMessage =
+            ref.read(authProvider).errorMessage ??
+            'That code isn’t right. Please try again.';
       });
     }
   }
 
   void _resendOtp() {
     _startTimer();
-    final id = ref.read(authProvider).identifier ?? 'customer@example.com';
+    final id = ref.read(authProvider).identifier;
+    if (id == null) return;
     ref.read(authProvider.notifier).sendOtp(id);
   }
 
@@ -118,49 +125,6 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                 'We sent a 6-digit code to ${authState.identifier ?? "your email"}',
                 style: AppTypography.bodySmall,
               ),
-              if (authState.mockOtp != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryTint20,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.primary.withOpacity(0.4)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline, size: 20, color: AppColors.primary),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Test mode OTP: ${authState.mockOtp}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.onPrimary,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        onPressed: () {
-                          final code = authState.mockOtp!;
-                          for (int i = 0; i < 6 && i < code.length; i++) {
-                            _controllers[i].text = code[i];
-                          }
-                          _verifyOtp();
-                        },
-                        child: const Text('Auto-fill', style: TextStyle(fontSize: 12)),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
               const SizedBox(height: 24),
 
               // Responsive OTP Boxes or Success Morph
@@ -168,7 +132,8 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final double availableWidth = constraints.maxWidth;
-                    final double calculatedWidth = ((availableWidth - 30) / 6).clamp(36.0, 48.0);
+                    final double calculatedWidth = ((availableWidth - 30) / 6)
+                        .clamp(36.0, 48.0);
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: List.generate(6, (index) {
@@ -187,18 +152,26 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                               fontWeight: FontWeight.bold,
                               color: AppColors.textPrimary,
                             ),
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             decoration: InputDecoration(
                               counterText: '',
                               contentPadding: EdgeInsets.zero,
                               filled: true,
-                              fillColor: hasValue ? AppColors.primaryTint20 : AppColors.surface,
+                              fillColor: hasValue
+                                  ? AppColors.primaryTint20
+                                  : AppColors.surface,
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(AppDimensions.radiusInput),
+                                borderRadius: BorderRadius.circular(
+                                  AppDimensions.radiusInput,
+                                ),
                                 borderSide: BorderSide(
                                   color: _errorMessage != null
                                       ? AppColors.accent
-                                      : (hasValue ? AppColors.primary : AppColors.neutralBorder),
+                                      : (hasValue
+                                            ? AppColors.primary
+                                            : AppColors.neutralBorder),
                                   width: _errorMessage != null ? 2.0 : 1.5,
                                 ),
                               ),
@@ -229,7 +202,11 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                       color: AppColors.primary,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.check, size: 36, color: AppColors.onPrimary),
+                    child: const Icon(
+                      Icons.check,
+                      size: 36,
+                      color: AppColors.onPrimary,
+                    ),
                   ),
                 ),
 
@@ -237,12 +214,18 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    const Icon(Icons.error_outline, size: 16, color: AppColors.accent),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 16,
+                      color: AppColors.accent,
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: AppTypography.caption.copyWith(color: AppColors.textPrimary),
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
                   ],
@@ -258,9 +241,13 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                   TextButton(
                     onPressed: _secondsRemaining == 0 ? _resendOtp : null,
                     child: Text(
-                      _secondsRemaining == 0 ? 'Resend OTP' : 'Resend in 00:${_secondsRemaining.toString().padLeft(2, '0')}',
+                      _secondsRemaining == 0
+                          ? 'Resend OTP'
+                          : 'Resend in 00:${_secondsRemaining.toString().padLeft(2, '0')}',
                       style: TextStyle(
-                        color: _secondsRemaining == 0 ? AppColors.accent : AppColors.textSecondary,
+                        color: _secondsRemaining == 0
+                            ? AppColors.accent
+                            : AppColors.textSecondary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

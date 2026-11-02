@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
-import '../../shared/data/mock_data.dart';
 import '../../shared/models/item_model.dart';
 import '../../shared/models/shop_model.dart';
 import '../../shared/models/diet_type.dart';
@@ -16,16 +15,15 @@ import '../../shared/widgets/cards/shop_card.dart';
 class SearchResultsScreen extends ConsumerStatefulWidget {
   final String query;
 
-  const SearchResultsScreen({
-    super.key,
-    required this.query,
-  });
+  const SearchResultsScreen({super.key, required this.query});
 
   @override
-  ConsumerState<SearchResultsScreen> createState() => _SearchResultsScreenState();
+  ConsumerState<SearchResultsScreen> createState() =>
+      _SearchResultsScreenState();
 }
 
-class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> with SingleTickerProviderStateMixin {
+class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _filterVegOnly = false;
   bool _filterFastDelivery = false;
@@ -56,8 +54,13 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> with 
         final matchesName = item.name.toLowerCase().contains(q);
         final matchesCategory = item.category.toLowerCase().contains(q);
         final matchesShop = item.shopName.toLowerCase().contains(q);
-        final matchesIngredients = item.ingredients.any((t) => t.toLowerCase().contains(q));
-        if (!matchesName && !matchesCategory && !matchesShop && !matchesIngredients) {
+        final matchesIngredients = item.ingredients.any(
+          (t) => t.toLowerCase().contains(q),
+        );
+        if (!matchesName &&
+            !matchesCategory &&
+            !matchesShop &&
+            !matchesIngredients) {
           return false;
         }
       }
@@ -78,7 +81,8 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> with 
         }
       }
       if (_filterTopRated && shop.rating < 4.7) return false;
-      if (_filterFastDelivery && !shop.prepTimeMinutes.contains('15')) return false;
+      if (_filterFastDelivery && !shop.prepTimeMinutes.contains('15'))
+        return false;
       return true;
     }).toList();
   }
@@ -96,8 +100,8 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> with 
     final catalogState = ref.watch(catalogProvider);
     final storesState = ref.watch(storesProvider);
 
-    final rawItems = catalogState.items.isNotEmpty ? catalogState.items : MockData.allItems;
-    final rawShops = storesState.stores.isNotEmpty ? storesState.stores : MockData.shops;
+    final rawItems = catalogState.items;
+    final rawShops = storesState.stores;
 
     final items = _getFilteredItems(rawItems);
     final shops = _getFilteredShops(rawShops);
@@ -105,7 +109,9 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> with 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Search: "${widget.query.isNotEmpty ? widget.query : 'All Treats'}"'),
+        title: Text(
+          'Search: "${widget.query.isNotEmpty ? widget.query : 'All Treats'}"',
+        ),
         backgroundColor: AppColors.surface,
         bottom: TabBar(
           controller: _tabController,
@@ -139,7 +145,8 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> with 
                 _buildFilterChip(
                   label: 'Fast (< 25 min)',
                   isSelected: _filterFastDelivery,
-                  onSelected: (val) => setState(() => _filterFastDelivery = val),
+                  onSelected: (val) =>
+                      setState(() => _filterFastDelivery = val),
                 ),
                 const SizedBox(width: 8),
                 _buildFilterChip(
@@ -172,15 +179,18 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> with 
               children: [
                 // 1. Items View (2-column responsive grid)
                 items.isEmpty
-                    ? _buildEmptyState('No sweet items found matching your filters.')
+                    ? _buildEmptyState(
+                        'No sweet items found matching your filters.',
+                      )
                     : GridView.builder(
                         padding: const EdgeInsets.all(AppDimensions.p16),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.52,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio: 0.52,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                            ),
                         itemCount: items.length,
                         itemBuilder: (context, index) {
                           final item = items[index];
@@ -193,7 +203,9 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> with 
 
                 // 2. Shops View
                 shops.isEmpty
-                    ? _buildEmptyState('No confectionery shops found matching your filters.')
+                    ? _buildEmptyState(
+                        'No confectionery shops found matching your filters.',
+                      )
                     : ListView.builder(
                         padding: const EdgeInsets.all(AppDimensions.p16),
                         itemCount: shops.length,
@@ -248,7 +260,11 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> with 
             const SizedBox(height: 16),
             const Text('No Results Found', style: AppTypography.heading2),
             const SizedBox(height: 8),
-            Text(message, style: AppTypography.bodySmall, textAlign: TextAlign.center),
+            Text(
+              message,
+              style: AppTypography.bodySmall,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 24),
             OutlinedButton(
               onPressed: _resetFilters,

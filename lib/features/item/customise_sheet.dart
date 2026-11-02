@@ -14,11 +14,7 @@ class CustomiseSheet extends ConsumerStatefulWidget {
   final ItemModel item;
   final ItemVariant? initialVariant;
 
-  const CustomiseSheet({
-    super.key,
-    required this.item,
-    this.initialVariant,
-  });
+  const CustomiseSheet({super.key, required this.item, this.initialVariant});
 
   @override
   ConsumerState<CustomiseSheet> createState() => _CustomiseSheetState();
@@ -35,7 +31,7 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
   @override
   void initState() {
     super.initState();
-    _selectedVariant = widget.initialVariant ?? widget.item.defaultVariant;
+    _selectedVariant = widget.initialVariant ?? widget.item.defaultVariant!;
   }
 
   @override
@@ -52,7 +48,9 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
 
   void _handleAddToCart() {
     try {
-      ref.read(cartProvider.notifier).addItem(
+      ref
+          .read(cartProvider.notifier)
+          .addItem(
             item: widget.item,
             variant: _selectedVariant,
             quantity: _quantity,
@@ -98,7 +96,10 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Keep Current Cart', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              'Keep Current Cart',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -106,7 +107,9 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
               foregroundColor: AppColors.onPrimary,
             ),
             onPressed: () {
-              ref.read(cartProvider.notifier).replaceCartWithItem(
+              ref
+                  .read(cartProvider.notifier)
+                  .replaceCartWithItem(
                     item: conflict.newItem,
                     variant: conflict.variant,
                     quantity: _quantity,
@@ -152,7 +155,10 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
 
           // Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppDimensions.p20, vertical: 8),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.p20,
+              vertical: 8,
+            ),
             child: Row(
               children: [
                 DietMarker(dietType: widget.item.dietType),
@@ -180,7 +186,10 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
               padding: const EdgeInsets.all(AppDimensions.p20),
               children: [
                 // 1. Variant / Size / Weight Selector
-                const Text('Choose Size / Portion', style: AppTypography.itemName),
+                const Text(
+                  'Choose Size / Portion',
+                  style: AppTypography.itemName,
+                ),
                 const SizedBox(height: 12),
                 Column(
                   children: widget.item.variants.map((v) {
@@ -188,10 +197,14 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primaryTint20 : AppColors.surface,
+                        color: isSelected
+                            ? AppColors.primaryTint20
+                            : AppColors.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSelected ? AppColors.primary : AppColors.neutralBorder,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.neutralBorder,
                           width: isSelected ? 1.5 : 1.0,
                         ),
                       ),
@@ -205,7 +218,8 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
                           style: AppTypography.price.copyWith(fontSize: 16),
                         ),
                         onChanged: (val) {
-                          if (val != null) setState(() => _selectedVariant = val);
+                          if (val != null)
+                            setState(() => _selectedVariant = val);
                         },
                       ),
                     );
@@ -230,7 +244,10 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
                           children: [
                             DietMarker(dietType: DietType.veg, showLabel: true),
                             SizedBox(width: 8),
-                            Text('Make 100% Eggless', style: AppTypography.itemName),
+                            Text(
+                              'Make 100% Eggless',
+                              style: AppTypography.itemName,
+                            ),
                           ],
                         ),
                         Switch(
@@ -246,7 +263,10 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
 
                 // 3. Cake Message (if enabled)
                 if (widget.item.allowsCakeMessage) ...[
-                  const Text('Custom Message on Cake', style: AppTypography.itemName),
+                  const Text(
+                    'Custom Message on Cake',
+                    style: AppTypography.itemName,
+                  ),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _cakeMessageController,
@@ -258,7 +278,9 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
                       fillColor: AppColors.primaryTint10,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.neutralBorder),
+                        borderSide: const BorderSide(
+                          color: AppColors.neutralBorder,
+                        ),
                       ),
                     ),
                     onChanged: (_) => setState(() {}),
@@ -274,21 +296,28 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
                       Text(group.title, style: AppTypography.itemName),
                       const SizedBox(height: 8),
                       ...group.options.map((opt) {
-                        final isChosen = _selectedOptions.any((o) => o.id == opt.id);
+                        final isChosen = _selectedOptions.any(
+                          (o) => o.id == opt.id,
+                        );
                         return CheckboxListTile(
                           value: isChosen,
                           activeColor: AppColors.primary,
                           checkColor: AppColors.onPrimary,
                           title: Text(opt.name, style: AppTypography.body),
                           secondary: opt.price > 0
-                              ? Text('+${Formatters.formatCurrency(opt.price)}', style: AppTypography.caption)
+                              ? Text(
+                                  '+${Formatters.formatCurrency(opt.price)}',
+                                  style: AppTypography.caption,
+                                )
                               : null,
                           onChanged: (val) {
                             setState(() {
                               if (val == true) {
                                 _selectedOptions.add(opt);
                               } else {
-                                _selectedOptions.removeWhere((o) => o.id == opt.id);
+                                _selectedOptions.removeWhere(
+                                  (o) => o.id == opt.id,
+                                );
                               }
                             });
                           },
@@ -300,7 +329,10 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
                 }),
 
                 // 5. Special Instructions
-                const Text('Special Instructions', style: AppTypography.itemName),
+                const Text(
+                  'Special Instructions',
+                  style: AppTypography.itemName,
+                ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _instructionsController,
@@ -312,7 +344,9 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
                     fillColor: AppColors.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.neutralBorder),
+                      borderSide: const BorderSide(
+                        color: AppColors.neutralBorder,
+                      ),
                     ),
                   ),
                 ),
@@ -331,7 +365,11 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
             decoration: const BoxDecoration(
               color: AppColors.surface,
               boxShadow: [
-                BoxShadow(color: Color(0x14171A14), offset: Offset(0, -4), blurRadius: 16),
+                BoxShadow(
+                  color: Color(0x14171A14),
+                  offset: Offset(0, -4),
+                  blurRadius: 16,
+                ),
               ],
             ),
             child: Row(
@@ -348,7 +386,9 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.remove, size: 18),
-                        onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
+                        onPressed: _quantity > 1
+                            ? () => setState(() => _quantity--)
+                            : null,
                       ),
                       Text('$_quantity', style: AppTypography.itemName),
                       IconButton(
@@ -363,7 +403,8 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
                 // Add Button with Animated Total
                 Expanded(
                   child: AppPrimaryButton(
-                    label: 'Add to Cart • ${Formatters.formatCurrency(_totalPrice)}',
+                    label:
+                        'Add to Cart • ${Formatters.formatCurrency(_totalPrice)}',
                     onPressed: _handleAddToCart,
                   ),
                 ),

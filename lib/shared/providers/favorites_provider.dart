@@ -5,8 +5,8 @@ class FavoritesState {
   final Set<String> favoriteShopIds;
 
   const FavoritesState({
-    this.favoriteItemIds = const {'item_kaju_katli', 'item_gelato_dark'},
-    this.favoriteShopIds = const {'shop_anand', 'shop_milano'},
+    this.favoriteItemIds = const {},
+    this.favoriteShopIds = const {},
   });
 
   FavoritesState copyWith({
@@ -47,6 +47,7 @@ class FavoritesNotifier extends StateNotifier<FavoritesState> {
   bool isShopFavorite(String shopId) => state.favoriteShopIds.contains(shopId);
 }
 
-final favoritesProvider = StateNotifierProvider<FavoritesNotifier, FavoritesState>((ref) {
-  return FavoritesNotifier();
-});
+final favoritesProvider =
+    StateNotifierProvider<FavoritesNotifier, FavoritesState>((ref) {
+      return FavoritesNotifier();
+    });

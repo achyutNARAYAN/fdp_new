@@ -15,18 +15,20 @@ class ItemVariant {
   final String id;
   final String label; // e.g. "250 g", "500 g", "1 kg", "1 Cup (100ml)"
   final double price;
-  final double mrp;
+  final double? mrp;
   final bool isDefault;
 
   const ItemVariant({
     required this.id,
     required this.label,
     required this.price,
-    required this.mrp,
+    this.mrp,
     this.isDefault = false,
   });
 
-  double get discountPercent => mrp > price ? (((mrp - price) / mrp) * 100).roundToDouble() : 0;
+  double get discountPercent => mrp != null && mrp! > price
+      ? (((mrp! - price) / mrp!) * 100).roundToDouble()
+      : 0;
 }
 
 class ItemCustomizationOption {
@@ -65,7 +67,8 @@ class ItemModel {
   final String? hindiName;
   final String description;
   final String imageUrl;
-  final String category; // 'Sweets', 'Ice Cream', 'Cakes', 'Desserts', 'Snacks', etc.
+  final String
+  category; // 'Sweets', 'Ice Cream', 'Cakes', 'Desserts', 'Snacks', etc.
   final DietType dietType;
   final List<ItemVariant> variants;
   final ItemAvailability availability;
@@ -77,7 +80,6 @@ class ItemModel {
   final bool allowsCakeMessage;
   final bool allowsEgglessToggle;
   final List<ItemCustomizationGroup> customizationGroups;
-  final int maxQuantity;
 
   const ItemModel({
     required this.id,
@@ -90,7 +92,7 @@ class ItemModel {
     required this.category,
     required this.dietType,
     required this.variants,
-    this.availability = ItemAvailability.available,
+    this.availability = ItemAvailability.unavailable,
     this.isPerishable = false,
     this.storageNote,
     this.shelfLife,
@@ -99,15 +101,14 @@ class ItemModel {
     this.allowsCakeMessage = false,
     this.allowsEgglessToggle = false,
     this.customizationGroups = const [],
-    this.maxQuantity = 10,
   });
 
-  ItemVariant get defaultVariant =>
-      variants.firstWhere((v) => v.isDefault, orElse: () => variants.first);
+  ItemVariant? get defaultVariant => variants.isEmpty
+      ? null
+      : variants.firstWhere((v) => v.isDefault, orElse: () => variants.first);
 
-  double get price => defaultVariant.price;
-  double get mrp => defaultVariant.mrp;
-  double get discountPercent => defaultVariant.discountPercent;
+  double get price => defaultVariant?.price ?? 0;
+  double get discountPercent => defaultVariant?.discountPercent ?? 0;
 
   static DietType _parseDietType(String? dt) {
     switch (dt?.toUpperCase()) {
@@ -119,12 +120,12 @@ class ItemModel {
       case 'NON_VEG':
         return DietType.nonVeg;
       default:
-        return DietType.veg;
+        return DietType.unknown;
     }
   }
 
   static String _formatCategory(String? cat) {
-    if (cat == null) return 'Sweets';
+    if (cat == null) return '';
     switch (cat.toUpperCase()) {
       case 'TRADITIONAL_SWEETS':
       case 'BENGALI_SWEETS':
@@ -149,71 +150,51 @@ class ItemModel {
 
   factory ItemModel.fromCatalogApi(
     Map<String, dynamic> json, {
-    String shopId = 'STR-2026-0001',
-    String shopName = 'Bikaner Sweet House',
+    String shopId = '',
+    String shopName = '',
   }) {
-    final List<dynamic>? allowedUnits = json['allowedUnits'] as List<dynamic>?;
-    final List<ItemVariant> variantsList = [];
-
-    if (allowedUnits != null && allowedUnits.isNotEmpty) {
-      for (int i = 0; i < allowedUnits.length; i++) {
-        final unitStr = allowedUnits[i].toString();
-        final label = ApiConfig.formatMeasurementUnit(unitStr);
-        // Default base price if not mapped in store menu
-        final double basePrice = (i == 0) ? 350.0 : (350.0 * (i + 1) * 0.85);
-        variantsList.add(
-          ItemVariant(
-            id: 'v_${json['_id']}_$unitStr',
-            label: label,
-            price: basePrice,
-            mrp: (basePrice * 1.15).roundToDouble(),
-            isDefault: i == 0,
-          ),
-        );
-      }
-    } else {
-      variantsList.add(
-        const ItemVariant(
-          id: 'v_default',
-          label: '500 g',
-          price: 350.0,
-          mrp: 400.0,
-          isDefault: true,
-        ),
-      );
-    }
+    final variantsList = <ItemVariant>[];
 
     final cat = json['category']?.toString();
     final isIceCreamOrCold = cat == 'ICE_CREAM' || cat == 'KULFI';
 
     return ItemModel(
-      id: json['_id']?.toString() ?? json['id']?.toString() ?? json['code']?.toString() ?? '',
-      shopId: shopId,
-      shopName: shopName,
-      name: json['name']?.toString() ?? 'Artisanal Delicacy',
+      id:
+          json['_id']?.toString() ??
+          json['id']?.toString() ??
+          json['code']?.toString() ??
+          '',
+      shopId: json['storeId']?.toString() ?? shopId,
+      shopName: json['storeName']?.toString() ?? shopName,
+      name: json['name']?.toString() ?? '',
       hindiName: json['hindiName']?.toString(),
-      description: json['description']?.toString() ?? 'Handcrafted with traditional ingredients.',
-      imageUrl: json['imageUrl']?.toString() ??
-          'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28',
+      description: json['description']?.toString() ?? '',
+      imageUrl: json['imageUrl']?.toString() ?? '',
       category: _formatCategory(cat),
       dietType: _parseDietType(json['dietaryType']?.toString()),
       variants: variantsList,
-      availability: (json['isActive'] == false)
-          ? ItemAvailability.unavailable
-          : ItemAvailability.available,
+      availability: json['isActive'] == true
+          ? ItemAvailability.available
+          : ItemAvailability.unavailable,
       isPerishable: isIceCreamOrCold,
-      storageNote: isIceCreamOrCold
-          ? 'Packed in thermal insulated bag with food-grade gel pack. Freeze immediately.'
-          : 'Store in a cool, dry place away from direct sunlight.',
-      shelfLife: json['shelfLife']?.toString() ?? '10-15 days',
-      ingredients: (json['standardIngredients'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-      allergens: (json['allergenTags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      storageNote: json['storageNote']?.toString(),
+      shelfLife: json['shelfLife']?.toString(),
+      ingredients:
+          (json['standardIngredients'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      allergens:
+          (json['allergenTags'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
     );
   }
 
   factory ItemModel.fromStoreMenuItemApi(
     Map<String, dynamic> json, {
-    String storeName = 'Bikaner Sweet House',
+    String storeName = '',
   }) {
     final catalogObj = json['catalogItemId'];
     Map<String, dynamic> catalogData = {};
@@ -227,55 +208,54 @@ class ItemModel {
     if (pricingList != null && pricingList.isNotEmpty) {
       for (int i = 0; i < pricingList.length; i++) {
         final p = pricingList[i] as Map<String, dynamic>;
-        final unit = p['unit']?.toString() ?? 'UNIT';
+        final unit = p['unit']?.toString() ?? '';
         final pricePaise = p['pricePaise'];
+        if (unit.isEmpty || pricePaise == null) continue;
         final double priceRupees = ApiConfig.paiseToRupees(pricePaise);
+        final mrpPaise = p['mrpPaise'];
 
         variants.add(
           ItemVariant(
-            id: p['_id']?.toString() ?? 'var_$i',
+            id: p['_id']?.toString() ?? unit,
             label: ApiConfig.formatMeasurementUnit(unit),
             price: priceRupees,
-            mrp: (priceRupees * 1.15).roundToDouble(),
-            isDefault: i == 0,
+            mrp: mrpPaise == null ? null : ApiConfig.paiseToRupees(mrpPaise),
+            isDefault: p['isDefault'] == true,
           ),
         );
       }
     }
 
-    if (variants.isEmpty) {
-      variants.add(
-        const ItemVariant(
-          id: 'v_def',
-          label: 'Standard',
-          price: 250.0,
-          mrp: 300.0,
-          isDefault: true,
-        ),
-      );
-    }
-
-    final bool inStock = json['isInStock'] ?? true;
+    final bool inStock = json['isInStock'] == true;
     final cat = catalogData['category']?.toString();
     final isIceCreamOrCold = cat == 'ICE_CREAM' || cat == 'KULFI';
 
     return ItemModel(
       id: catalogData['_id']?.toString() ?? json['_id']?.toString() ?? '',
-      shopId: json['storeId']?.toString() ?? 'STR-2026-0001',
+      shopId: json['storeId']?.toString() ?? '',
       shopName: storeName,
-      name: catalogData['name']?.toString() ?? 'Special Sweet',
+      name: catalogData['name']?.toString() ?? '',
       hindiName: catalogData['hindiName']?.toString(),
       description: catalogData['description']?.toString() ?? '',
-      imageUrl: catalogData['imageUrl']?.toString() ??
-          'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28',
+      imageUrl: catalogData['imageUrl']?.toString() ?? '',
       category: _formatCategory(cat),
       dietType: _parseDietType(catalogData['dietaryType']?.toString()),
       variants: variants,
-      availability: inStock ? ItemAvailability.available : ItemAvailability.unavailable,
+      availability: inStock
+          ? ItemAvailability.available
+          : ItemAvailability.unavailable,
       isPerishable: isIceCreamOrCold,
       shelfLife: catalogData['shelfLife']?.toString(),
-      ingredients: (catalogData['standardIngredients'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-      allergens: (catalogData['allergenTags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      ingredients:
+          (catalogData['standardIngredients'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      allergens:
+          (catalogData['allergenTags'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
     );
   }
 }

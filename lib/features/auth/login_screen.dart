@@ -45,22 +45,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _isLoading = true;
     });
 
-    await ref.read(authProvider.notifier).sendOtp(email);
+    final sent = await ref.read(authProvider.notifier).sendOtp(email);
 
     if (mounted) {
       setState(() => _isLoading = false);
-      final mock = ref.read(authProvider).mockOtp ?? '123456';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Verification code sent! Test OTP: $mock'),
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      if (!sent) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ref.read(authProvider).errorMessage ??
+                  'Could not send the verification code.',
+            ),
+          ),
+        );
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Verification code sent.')));
       context.push('/otp-verification');
     }
   }
 
-  void _showGoogleSetupDialog(BuildContext context, String title, String message) {
+  void _showGoogleSetupDialog(
+    BuildContext context,
+    String title,
+    String message,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -74,17 +85,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         content: Text(message, style: AppTypography.bodySmall),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _emailController.text = 'test.customer@fdp.in';
-              _handleEmailContinue();
-            },
-            child: const Text('Try Email OTP (Instant)'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK', style: TextStyle(color: AppColors.onPrimary)),
+            child: const Text('OK'),
           ),
         ],
       ),
@@ -94,6 +96,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _handleGoogleSignIn() async {
     setState(() => _isGoogleLoading = true);
     try {
+      await _googleSignIn.signOut();
       final account = await _googleSignIn.signIn();
       if (account == null) {
         setState(() => _isGoogleLoading = false);
@@ -109,14 +112,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             context,
             'Server ID Token Required',
             'Google Sign-In authenticated locally on this device, but did not return an OpenID idToken required by the backend.\n\n'
-            'To link with your live backend, specify your Web Client ID in `ApiConfig.googleServerClientId`.\n\n'
-            'Tip: You can use Email OTP (Test OTP: 123456) to test all ordering and profile flows right away.',
+                'To link with your live backend, specify your Web Client ID in `ApiConfig.googleServerClientId`.\n\n'
+                'Use Email OTP to sign in with your account.',
           );
         }
         return;
       }
 
-      final success = await ref.read(authProvider.notifier).signInWithGoogle(idToken);
+      final success = await ref
+          .read(authProvider.notifier)
+          .signInWithGoogle(idToken);
       if (mounted) {
         setState(() => _isGoogleLoading = false);
         if (success) {
@@ -127,8 +132,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             context.go('/home');
           }
         } else {
-          final err = ref.read(authProvider).errorMessage ?? 'Google sign-in failed.';
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+          final err =
+              ref.read(authProvider).errorMessage ?? 'Google sign-in failed.';
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(err)));
         }
       }
     } catch (e) {
@@ -140,17 +148,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             context,
             'Google Cloud Setup Needed',
             'Android ApiException 10 (DEVELOPER_ERROR):\n\n'
-            'Google Play Services could not verify the app configuration.\n\n'
-            'Required steps for real Google Sign-In on Android:\n'
-            '1. Create an OAuth 2.0 Client ID for package `com.example.fdp` in Google Cloud Console.\n'
-            '2. Add your debug SHA-1 keystore fingerprint.\n'
-            '3. Set your Web Client ID in `ApiConfig.googleServerClientId`.\n\n'
-            'In the meantime, Email OTP (with test code 123456) connects seamlessly with the live Render backend!',
+                'Google Play Services could not verify the app configuration.\n\n'
+                'Required steps for real Google Sign-In on Android:\n'
+                '1. Create an OAuth 2.0 Client ID for package `com.example.fdp` in Google Cloud Console.\n'
+                '2. Add your debug SHA-1 keystore fingerprint.\n'
+                '3. Set your Web Client ID in `ApiConfig.googleServerClientId`.\n\n'
+                'Check that the app package name and signing SHA-1 are registered in Google Cloud Console, and that this Web Client ID is configured as the backend audience.',
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Google Sign-In: $errStr')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Google Sign-In: $errStr')));
         }
       }
     }
@@ -171,7 +179,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     // Top: Brand illustration
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: AppDimensions.p24, vertical: 32),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppDimensions.p24,
+                        vertical: 32,
+                      ),
                       alignment: Alignment.center,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -182,7 +193,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             decoration: BoxDecoration(
                               color: AppColors.primaryTint20,
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: AppColors.primary, width: 1.5),
+                              border: Border.all(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
                             ),
                             child: const Icon(
                               Icons.cake_outlined,
@@ -226,7 +240,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Login or Register', style: AppTypography.heading2),
+                          const Text(
+                            'Login or Register',
+                            style: AppTypography.heading2,
+                          ),
                           const SizedBox(height: 6),
                           const Text(
                             'We will send a 6-digit OTP code to your email address.',
@@ -239,9 +256,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             height: AppDimensions.heightInput,
                             decoration: BoxDecoration(
                               color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(AppDimensions.radiusInput),
+                              borderRadius: BorderRadius.circular(
+                                AppDimensions.radiusInput,
+                              ),
                               border: Border.all(
-                                color: _emailError != null ? AppColors.accent : AppColors.neutralBorder,
+                                color: _emailError != null
+                                    ? AppColors.accent
+                                    : AppColors.neutralBorder,
                                 width: _emailError != null ? 2.0 : 1.5,
                               ),
                             ),
@@ -249,15 +270,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             alignment: Alignment.center,
                             child: Row(
                               children: [
-                                const Icon(Icons.email_outlined, size: 20, color: AppColors.textSecondary),
+                                const Icon(
+                                  Icons.email_outlined,
+                                  size: 20,
+                                  color: AppColors.textSecondary,
+                                ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: TextField(
                                     controller: _emailController,
                                     keyboardType: TextInputType.emailAddress,
-                                    style: AppTypography.body.copyWith(fontWeight: FontWeight.w600),
+                                    style: AppTypography.body.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                     onChanged: (val) {
-                                      if (_emailError != null) setState(() => _emailError = null);
+                                      if (_emailError != null)
+                                        setState(() => _emailError = null);
                                     },
                                     decoration: const InputDecoration(
                                       hintText: 'your@email.com',
@@ -275,12 +303,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                const Icon(Icons.error_outline, size: 14, color: AppColors.accent),
+                                const Icon(
+                                  Icons.error_outline,
+                                  size: 14,
+                                  color: AppColors.accent,
+                                ),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     _emailError!,
-                                    style: AppTypography.caption.copyWith(color: AppColors.textPrimary),
+                                    style: AppTypography.caption.copyWith(
+                                      color: AppColors.textPrimary,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -302,10 +336,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             children: [
                               const Expanded(child: Divider()),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
                                 child: Text(
                                   'OR',
-                                  style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600),
+                                  style: AppTypography.caption.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                               const Expanded(child: Divider()),
@@ -319,11 +357,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             width: double.infinity,
                             height: AppDimensions.heightInput,
                             child: OutlinedButton(
-                              onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
+                              onPressed: _isGoogleLoading
+                                  ? null
+                                  : _handleGoogleSignIn,
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: AppColors.neutralBorder, width: 1.5),
+                                side: const BorderSide(
+                                  color: AppColors.neutralBorder,
+                                  width: 1.5,
+                                ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(AppDimensions.radiusInput),
+                                  borderRadius: BorderRadius.circular(
+                                    AppDimensions.radiusInput,
+                                  ),
                                 ),
                                 backgroundColor: AppColors.surface,
                               ),
@@ -331,17 +376,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ? const SizedBox(
                                       width: 20,
                                       height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     )
                                   : Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         // Google G icon
                                         Container(
                                           width: 20,
                                           height: 20,
-                                          decoration: const BoxDecoration(shape: BoxShape.circle),
-                                          child: const Icon(Icons.g_mobiledata, size: 24, color: Color(0xFF4285F4)),
+                                          decoration: const BoxDecoration(
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.g_mobiledata,
+                                            size: 24,
+                                            color: Color(0xFF4285F4),
+                                          ),
                                         ),
                                         const SizedBox(width: 10),
                                         const Text(

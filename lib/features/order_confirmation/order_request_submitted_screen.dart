@@ -8,45 +8,25 @@ import '../../core/utils/formatters.dart';
 import '../../shared/models/order_model.dart';
 import '../../shared/providers/order_provider.dart';
 import '../../shared/widgets/badges/status_chip.dart';
+import '../../shared/widgets/layout/no_order_data.dart';
 
 class OrderRequestSubmittedScreen extends ConsumerStatefulWidget {
   final String orderId;
 
-  const OrderRequestSubmittedScreen({
-    super.key,
-    required this.orderId,
-  });
+  const OrderRequestSubmittedScreen({super.key, required this.orderId});
 
   @override
-  ConsumerState<OrderRequestSubmittedScreen> createState() => _OrderRequestSubmittedScreenState();
+  ConsumerState<OrderRequestSubmittedScreen> createState() =>
+      _OrderRequestSubmittedScreenState();
 }
 
-class _OrderRequestSubmittedScreenState extends ConsumerState<OrderRequestSubmittedScreen> {
-  double _progressValue = 0.0;
-
-  @override
-  void initState() {
-    super.initState();
-    _startTransition();
-  }
-
-  void _startTransition() async {
-    // Fill 2px progress bar over 1.8 seconds then automatically transition to Waiting screen
-    for (int i = 1; i <= 10; i++) {
-      await Future.delayed(const Duration(milliseconds: 180));
-      if (mounted) {
-        setState(() => _progressValue = i / 10.0);
-      }
-    }
-    if (mounted) {
-      context.go('/waiting-confirmation/${widget.orderId}');
-    }
-  }
-
+class _OrderRequestSubmittedScreenState
+    extends ConsumerState<OrderRequestSubmittedScreen> {
   @override
   Widget build(BuildContext context) {
     final orderState = ref.watch(orderProvider);
     final order = orderState.activeOrder;
+    if (order == null) return const NoOrderData();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -72,7 +52,7 @@ class _OrderRequestSubmittedScreenState extends ConsumerState<OrderRequestSubmit
               ),
               const SizedBox(height: 8),
               Text(
-                'We have pinged ${order?.shopName ?? "the sweet shop"}’s live kitchen terminal. Connecting to shop confirmation desk...',
+                'We have pinged ${order.shopName ?? "the sweet shop"}’s live kitchen terminal. Connecting to shop confirmation desk...',
                 style: AppTypography.body,
               ),
               const SizedBox(height: 32),
@@ -89,25 +69,22 @@ class _OrderRequestSubmittedScreenState extends ConsumerState<OrderRequestSubmit
                 child: Column(
                   children: [
                     _row('Order ID', '#${widget.orderId}'),
-                    _row('Confectioner', order?.shopName ?? 'Anand Sweets'),
-                    _row('Items', '${order?.items.length ?? 2} items'),
-                    _row('Total', Formatters.formatCurrency(order?.totalAmount ?? 824.5)),
+                    _row('Confectioner', order.shopName ?? ''),
+                    _row('Items', '${order.items.length ?? 0} items'),
+                    _row(
+                      'Total',
+                      order == null
+                          ? ''
+                          : Formatters.formatCurrency(order.totalAmount),
+                    ),
                     _row(
                       'Payment Status',
-                      order?.paymentMethod == PaymentMethodType.cod ? 'COD Pending' : 'Paid Online',
+                      order.paymentMethod == PaymentMethodType.cod
+                          ? 'COD Pending'
+                          : 'Paid Online',
                     ),
                   ],
                 ),
-              ),
-
-              const SizedBox(height: 36),
-
-              // Progress Bar animating to Waiting Experience
-              LinearProgressIndicator(
-                value: _progressValue,
-                minHeight: 3,
-                backgroundColor: AppColors.neutralLight,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
               ),
 
               const Spacer(),
@@ -117,7 +94,10 @@ class _OrderRequestSubmittedScreenState extends ConsumerState<OrderRequestSubmit
                   onPressed: () {
                     context.go('/waiting-confirmation/${widget.orderId}');
                   },
-                  child: const Text('Proceed to Live Confirmation Screen →', style: TextStyle(color: AppColors.textPrimary)),
+                  child: const Text(
+                    'Proceed to Live Confirmation Screen →',
+                    style: TextStyle(color: AppColors.textPrimary),
+                  ),
                 ),
               ),
             ],
@@ -140,4 +120,3 @@ class _OrderRequestSubmittedScreenState extends ConsumerState<OrderRequestSubmit
     );
   }
 }
-

@@ -28,7 +28,10 @@ class CartItemModel {
   });
 
   double get unitPrice {
-    double addOns = selectedCustomizations.fold(0.0, (sum, opt) => sum + opt.price);
+    double addOns = selectedCustomizations.fold(
+      0.0,
+      (sum, opt) => sum + opt.price,
+    );
     return selectedVariant.price + addOns;
   }
 
@@ -53,7 +56,8 @@ class CartItemModel {
       isEggless: isEggless ?? this.isEggless,
       cakeMessage: cakeMessage ?? this.cakeMessage,
       specialInstructions: specialInstructions ?? this.specialInstructions,
-      selectedCustomizations: selectedCustomizations ?? this.selectedCustomizations,
+      selectedCustomizations:
+          selectedCustomizations ?? this.selectedCustomizations,
       hasPriceChanged: hasPriceChanged ?? this.hasPriceChanged,
       oldPrice: oldPrice ?? this.oldPrice,
       isAvailable: isAvailable ?? this.isAvailable,
@@ -67,10 +71,10 @@ class CartModel {
   final List<CartItemModel> items;
   final String? appliedCouponCode;
   final double discountAmount;
-  final double deliveryFee;
-  final double packagingFee;
-  final double platformFee;
-  final double tipAmount;
+  final double? deliveryFee;
+  final double? packagingFee;
+  final double? platformFee;
+  final double? taxes;
   final String? deliveryInstructions;
 
   const CartModel({
@@ -79,27 +83,36 @@ class CartModel {
     this.items = const [],
     this.appliedCouponCode,
     this.discountAmount = 0.0,
-    this.deliveryFee = 35.0,
-    this.packagingFee = 15.0,
-    this.platformFee = 5.0,
-    this.tipAmount = 0.0,
+    this.deliveryFee,
+    this.packagingFee,
+    this.platformFee,
+    this.taxes,
     this.deliveryInstructions,
   });
 
   bool get isEmpty => items.isEmpty;
   int get totalItemCount => items.fold(0, (sum, item) => sum + item.quantity);
 
-  List<CartItemModel> get readyItems => items.where((i) => i.isAvailable && !i.hasPriceChanged).toList();
-  List<CartItemModel> get attentionItems => items.where((i) => !i.isAvailable || i.hasPriceChanged).toList();
+  List<CartItemModel> get readyItems =>
+      items.where((i) => i.isAvailable && !i.hasPriceChanged).toList();
+  List<CartItemModel> get attentionItems =>
+      items.where((i) => !i.isAvailable || i.hasPriceChanged).toList();
   bool get hasIssues => attentionItems.isNotEmpty;
 
   bool get containsPerishable => items.any((i) => i.item.isPerishable);
 
-  double get subtotal => items.where((i) => i.isAvailable).fold(0.0, (sum, i) => sum + i.totalPrice);
-  double get taxes => (subtotal * 0.05); // 5% GST on sweet confectionery
+  double get subtotal => items
+      .where((i) => i.isAvailable)
+      .fold(0.0, (sum, i) => sum + i.totalPrice);
   double get grandTotal {
     if (isEmpty) return 0.0;
-    final total = subtotal - discountAmount + deliveryFee + packagingFee + platformFee + taxes + tipAmount;
+    final total =
+        subtotal -
+        discountAmount +
+        (deliveryFee ?? 0) +
+        (packagingFee ?? 0) +
+        (platformFee ?? 0) +
+        (taxes ?? 0);
     return total > 0 ? total : 0.0;
   }
 
@@ -112,7 +125,7 @@ class CartModel {
     double? deliveryFee,
     double? packagingFee,
     double? platformFee,
-    double? tipAmount,
+    double? taxes,
     String? deliveryInstructions,
   }) {
     return CartModel(
@@ -124,7 +137,7 @@ class CartModel {
       deliveryFee: deliveryFee ?? this.deliveryFee,
       packagingFee: packagingFee ?? this.packagingFee,
       platformFee: platformFee ?? this.platformFee,
-      tipAmount: tipAmount ?? this.tipAmount,
+      taxes: taxes ?? this.taxes,
       deliveryInstructions: deliveryInstructions ?? this.deliveryInstructions,
     );
   }

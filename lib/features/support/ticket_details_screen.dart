@@ -12,13 +12,11 @@ import '../../shared/widgets/badges/status_chip.dart';
 class TicketDetailsScreen extends ConsumerStatefulWidget {
   final String ticketId;
 
-  const TicketDetailsScreen({
-    super.key,
-    required this.ticketId,
-  });
+  const TicketDetailsScreen({super.key, required this.ticketId});
 
   @override
-  ConsumerState<TicketDetailsScreen> createState() => _TicketDetailsScreenState();
+  ConsumerState<TicketDetailsScreen> createState() =>
+      _TicketDetailsScreenState();
 }
 
 class _TicketDetailsScreenState extends ConsumerState<TicketDetailsScreen> {
@@ -34,17 +32,23 @@ class _TicketDetailsScreenState extends ConsumerState<TicketDetailsScreen> {
     final text = _replyController.text.trim();
     if (text.isEmpty) return;
 
-    ref.read(supportTicketsProvider.notifier).addMessage(widget.ticketId, text);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Support messaging API is unavailable.')),
+    );
     _replyController.clear();
   }
 
   @override
   Widget build(BuildContext context) {
     final tickets = ref.watch(supportTicketsProvider);
-    final ticket = tickets.firstWhere(
-      (t) => t.ticketId == widget.ticketId,
-      orElse: () => tickets.first,
-    );
+    final ticket = tickets
+        .where((t) => t.ticketId == widget.ticketId)
+        .firstOrNull;
+    if (ticket == null) {
+      return const Scaffold(
+        body: Center(child: Text('No ticket data available.')),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -74,13 +78,20 @@ class _TicketDetailsScreenState extends ConsumerState<TicketDetailsScreen> {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text('Order: #${ticket.orderId} • Opened ${Formatters.formatDate(ticket.createdAt)}', style: AppTypography.caption),
+                Text(
+                  'Order: #${ticket.orderId} • Opened ${Formatters.formatDate(ticket.createdAt)}',
+                  style: AppTypography.caption,
+                ),
                 if (ticket.refundStatusId != null) ...[
                   const SizedBox(height: 8),
                   GestureDetector(
-                    onTap: () => context.push('/refund-status/${ticket.orderId}'),
+                    onTap: () =>
+                        context.push('/refund-status/${ticket.orderId}'),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primaryTint20,
                         borderRadius: BorderRadius.circular(8),
@@ -88,11 +99,19 @@ class _TicketDetailsScreenState extends ConsumerState<TicketDetailsScreen> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.currency_exchange, size: 14, color: AppColors.primary),
+                          Icon(
+                            Icons.currency_exchange,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
                           SizedBox(width: 6),
                           Text(
                             'Linked Refund Active • Tap to View Bank Status',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
                         ],
                       ),
@@ -114,37 +133,55 @@ class _TicketDetailsScreenState extends ConsumerState<TicketDetailsScreen> {
                 final isCustomer = !msg.isAgent;
 
                 return Align(
-                  alignment: isCustomer ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment: isCustomer
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(14),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.78,
+                    ),
                     decoration: BoxDecoration(
-                      color: isCustomer ? AppColors.primaryTint20 : AppColors.surface,
+                      color: isCustomer
+                          ? AppColors.primaryTint20
+                          : AppColors.surface,
                       borderRadius: BorderRadius.circular(16),
-                      border: !isCustomer ? Border.all(color: AppColors.neutralBorder, width: 1) : null,
+                      border: !isCustomer
+                          ? Border.all(color: AppColors.neutralBorder, width: 1)
+                          : null,
                       boxShadow: AppDimensions.elevationLevel1,
                     ),
                     child: Column(
-                      crossAxisAlignment: isCustomer ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                      crossAxisAlignment: isCustomer
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
                       children: [
                         Text(
                           msg.sender,
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: isCustomer ? AppColors.textPrimary : AppColors.accent,
+                            color: isCustomer
+                                ? AppColors.textPrimary
+                                : AppColors.accent,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           msg.message,
-                          style: AppTypography.bodySmall.copyWith(color: AppColors.textPrimary, height: 1.3),
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textPrimary,
+                            height: 1.3,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           Formatters.formatTime(msg.timestamp),
-                          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -171,7 +208,10 @@ class _TicketDetailsScreenState extends ConsumerState<TicketDetailsScreen> {
                       hintStyle: AppTypography.bodySmall,
                       filled: true,
                       fillColor: AppColors.primaryTint10,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide.none,
@@ -192,4 +232,3 @@ class _TicketDetailsScreenState extends ConsumerState<TicketDetailsScreen> {
     );
   }
 }
-

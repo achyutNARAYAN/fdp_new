@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/cart_model.dart';
 import '../models/item_model.dart';
-import '../data/mock_data.dart';
 
 class CartConflictException implements Exception {
   final String currentShopName;
@@ -18,19 +17,7 @@ class CartConflictException implements Exception {
 }
 
 class CartNotifier extends StateNotifier<CartModel> {
-  CartNotifier()
-      : super(CartModel(
-          shopId: MockData.allItems[0].shopId,
-          shopName: MockData.allItems[0].shopName,
-          items: [
-            CartItemModel(
-              id: 'cart_1',
-              item: MockData.allItems[0], // Kaju Katli
-              selectedVariant: MockData.allItems[0].variants[0],
-              quantity: 2,
-            ),
-          ],
-        ));
+  CartNotifier() : super(const CartModel());
 
   /// Check if adding this item would conflict with an existing different shop
   bool canAddItem(ItemModel item) {
@@ -73,16 +60,18 @@ class CartNotifier extends StateNotifier<CartModel> {
         quantity: current.quantity + quantity,
       );
     } else {
-      updatedItems.add(CartItemModel(
-        id: 'cart_${DateTime.now().millisecondsSinceEpoch}',
-        item: item,
-        selectedVariant: variant,
-        quantity: quantity,
-        isEggless: isEggless,
-        cakeMessage: cakeMessage,
-        specialInstructions: specialInstructions,
-        selectedCustomizations: customizations,
-      ));
+      updatedItems.add(
+        CartItemModel(
+          id: 'cart_${DateTime.now().millisecondsSinceEpoch}',
+          item: item,
+          selectedVariant: variant,
+          quantity: quantity,
+          isEggless: isEggless,
+          cakeMessage: cakeMessage,
+          specialInstructions: specialInstructions,
+          selectedCustomizations: customizations,
+        ),
+      );
     }
 
     state = state.copyWith(
@@ -115,7 +104,7 @@ class CartNotifier extends StateNotifier<CartModel> {
           cakeMessage: cakeMessage,
           specialInstructions: specialInstructions,
           selectedCustomizations: customizations,
-        )
+        ),
       ],
     );
   }
@@ -153,14 +142,7 @@ class CartNotifier extends StateNotifier<CartModel> {
   }
 
   void removeCoupon() {
-    state = state.copyWith(
-      appliedCouponCode: null,
-      discountAmount: 0.0,
-    );
-  }
-
-  void setTip(double amount) {
-    state = state.copyWith(tipAmount: amount);
+    state = state.copyWith(appliedCouponCode: null, discountAmount: 0.0);
   }
 
   void setDeliveryInstructions(String instructions) {
@@ -175,4 +157,3 @@ class CartNotifier extends StateNotifier<CartModel> {
 final cartProvider = StateNotifierProvider<CartNotifier, CartModel>((ref) {
   return CartNotifier();
 });
-

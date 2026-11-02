@@ -11,19 +11,18 @@ import '../../shared/widgets/badges/order_status_badge.dart';
 import '../../shared/widgets/badges/payment_status_badge.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
 import '../../shared/widgets/buttons/app_secondary_button.dart';
+import '../../shared/widgets/layout/no_order_data.dart';
 
 class OrderConfirmedScreen extends ConsumerWidget {
   final String orderId;
 
-  const OrderConfirmedScreen({
-    super.key,
-    required this.orderId,
-  });
+  const OrderConfirmedScreen({super.key, required this.orderId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderState = ref.watch(orderProvider);
     final order = orderState.activeOrder;
+    if (order == null) return const NoOrderData();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -43,13 +42,17 @@ class OrderConfirmedScreen extends ConsumerWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.3),
+                      color: AppColors.primary.withValues(alpha: 0.3),
                       blurRadius: 24,
                       spreadRadius: 8,
                     ),
                   ],
                 ),
-                child: const Icon(Icons.check, size: 54, color: AppColors.onPrimary),
+                child: const Icon(
+                  Icons.check,
+                  size: 54,
+                  color: AppColors.onPrimary,
+                ),
               ),
 
               const SizedBox(height: 24),
@@ -63,7 +66,7 @@ class OrderConfirmedScreen extends ConsumerWidget {
               const SizedBox(height: 8),
 
               Text(
-                '${order?.shopName ?? "Anand Sweets"} accepted your order and confectioners are now starting preparation.',
+                order.shopName ?? '',
                 style: AppTypography.bodySmall,
                 textAlign: TextAlign.center,
               ),
@@ -77,7 +80,7 @@ class OrderConfirmedScreen extends ConsumerWidget {
                   const OrderStatusBadge(status: OrderStatus.orderConfirmed),
                   const SizedBox(width: 8),
                   PaymentStatusBadge(
-                    status: order?.paymentMethod == PaymentMethodType.cod
+                    status: order.paymentMethod == PaymentMethodType.cod
                         ? PaymentStatus.codPending
                         : PaymentStatus.paid,
                   ),
@@ -98,10 +101,22 @@ class OrderConfirmedScreen extends ConsumerWidget {
                 child: Column(
                   children: [
                     _row('Order ID', '#$orderId'),
-                    _row('Confectionery Shop', order?.shopName ?? 'Anand Sweets'),
-                    _row('Estimated Delivery', '30–45 min (by ${Formatters.formatTime(DateTime.now().add(const Duration(minutes: 35)))})'),
-                    _row('Item Total', Formatters.formatCurrency(order?.totalAmount ?? 824.50)),
-                    _row('Delivery Address', order?.deliveryAddress ?? 'Indiranagar, Bengaluru'),
+                    _row('Confectionery Shop', order.shopName ?? ''),
+                    _row(
+                      'Estimated Delivery',
+                      order.estimatedDeliveryTime == null
+                          ? ''
+                          : Formatters.formatTime(
+                              order!.estimatedDeliveryTime!,
+                            ),
+                    ),
+                    _row(
+                      'Item Total',
+                      order == null
+                          ? ''
+                          : Formatters.formatCurrency(order.totalAmount),
+                    ),
+                    _row('Delivery Address', order.deliveryAddress ?? ''),
                   ],
                 ),
               ),
@@ -117,7 +132,10 @@ class OrderConfirmedScreen extends ConsumerWidget {
                 ),
                 child: const Text(
                   'Cancellation policy: Orders can be cancelled freely until preparation begins. Custom cakes cannot be cancelled once baking starts.',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -156,7 +174,10 @@ class OrderConfirmedScreen extends ConsumerWidget {
           Flexible(
             child: Text(
               value,
-              style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: AppTypography.caption.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -165,4 +186,3 @@ class OrderConfirmedScreen extends ConsumerWidget {
     );
   }
 }
-

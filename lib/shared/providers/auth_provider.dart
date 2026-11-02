@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_model.dart';
-import '../data/mock_data.dart';
 import '../../core/services/auth_api_service.dart';
 import '../../core/services/customer_api_service.dart';
 
@@ -22,7 +21,6 @@ class AuthState {
   final String? errorMessage;
   final int remainingOtpAttempts;
   final DateTime? resendAvailableAt;
-  final String? mockOtp;
 
   const AuthState({
     this.status = AuthStatus.unauthenticated,
@@ -33,7 +31,6 @@ class AuthState {
     this.errorMessage,
     this.remainingOtpAttempts = 3,
     this.resendAvailableAt,
-    this.mockOtp,
   });
 
   String? get phoneNumber => user?.mobileNumber ?? identifier;
@@ -47,7 +44,6 @@ class AuthState {
     String? errorMessage,
     int? remainingOtpAttempts,
     DateTime? resendAvailableAt,
-    String? mockOtp,
   }) {
     return AuthState(
       status: status ?? this.status,
@@ -58,7 +54,6 @@ class AuthState {
       errorMessage: errorMessage,
       remainingOtpAttempts: remainingOtpAttempts ?? this.remainingOtpAttempts,
       resendAvailableAt: resendAvailableAt ?? this.resendAvailableAt,
-      mockOtp: mockOtp ?? this.mockOtp,
     );
   }
 }
@@ -70,20 +65,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier({
     AuthApiService? authService,
     CustomerApiService? customerService,
-  })  : _authService = authService ?? authApiService,
-        _customerService = customerService ?? customerApiService,
-        super(const AuthState()) {
+  }) : _authService = authService ?? authApiService,
+       _customerService = customerService ?? customerApiService,
+       super(const AuthState()) {
     _restoreSavedSession();
   }
 
   Future<void> _restoreSavedSession() async {
     try {
       final savedUser = await _authService.restoreSession();
-      if (savedUser != null) {
+      if (_authService.hasSession) {
         state = state.copyWith(
           status: AuthStatus.authenticated,
           user: savedUser,
-          identifier: savedUser.email ?? savedUser.mobileNumber,
+          identifier: savedUser?.email ?? savedUser?.mobileNumber,
         );
       }
     } catch (_) {}
@@ -106,33 +101,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
 
     try {
-      final res = await _authService.requestOtp(cleanEmail);
-      final String mockOtp = res['mockOtp']?.toString() ?? '123456';
+      await _authService.requestOtp(cleanEmail);
       state = state.copyWith(
         status: AuthStatus.otpSent,
         identifier: cleanEmail,
-        mockOtp: mockOtp,
         resendAvailableAt: DateTime.now().add(const Duration(seconds: 30)),
         remainingOtpAttempts: 3,
       );
       return true;
-    } catch (e) {
-      // Even on network error, allow OTP entry with mock OTP (123456)
+    } catch (_) {
       state = state.copyWith(
-        status: AuthStatus.otpSent,
+        status: AuthStatus.unauthenticated,
         identifier: cleanEmail,
-        mockOtp: '123456',
-        resendAvailableAt: DateTime.now().add(const Duration(seconds: 30)),
-        remainingOtpAttempts: 3,
+        errorMessage: 'Could not send the verification code. Please try again.',
       );
-      return true;
+      return false;
     }
   }
 
   Future<bool> verifyOtp(String otp) async {
-    final email = state.identifier ?? 'customer@example.com';
+    final email = state.identifier;
+    if (email == null) return false;
 
-    state = state.copyWith(status: AuthStatus.authenticating, errorMessage: null);
+    state = state.copyWith(
+      status: AuthStatus.authenticating,
+      errorMessage: null,
+    );
 
     try {
       final result = await _authService.verifyOtp(email: email, otp: otp);
@@ -148,22 +142,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
       } else {
         state = state.copyWith(
           status: AuthStatus.authenticated,
-          user: result.customer ?? MockData.currentUser,
+          user: result.customer,
           errorMessage: null,
         );
         return true;
       }
     } catch (e) {
-      // Demo fallback
-      if (otp == '123456' || otp == '000000') {
-        state = state.copyWith(
-          status: AuthStatus.authenticated,
-          user: MockData.currentUser,
-          errorMessage: null,
-        );
-        return true;
-      }
-
       final remaining = state.remainingOtpAttempts - 1;
       state = state.copyWith(
         status: AuthStatus.otpSent,
@@ -180,11 +164,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String name,
     required String phone,
   }) async {
-    state = state.copyWith(status: AuthStatus.authenticating, errorMessage: null);
+    state = state.copyWith(
+      status: AuthStatus.authenticating,
+      errorMessage: null,
+    );
 
     try {
-      final regToken = state.registrationToken ?? 'reg_token_fallback';
-      final custId = state.customerId ?? 'CUST-2026-0001';
+      final regToken = state.registrationToken;
+      final custId = state.customerId;
+      if (regToken == null || custId == null) {
+        state = state.copyWith(
+          status: AuthStatus.needsProfile,
+          errorMessage:
+              'Registration session expired. Please verify your email again.',
+        );
+        return false;
+      }
 
       final user = await _authService.completeRegistration(
         registrationToken: regToken,
@@ -193,34 +188,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
         phone: phone,
       );
 
-      state = state.copyWith(
-        status: AuthStatus.authenticated,
-        user: user,
-      );
+      state = state.copyWith(status: AuthStatus.authenticated, user: user);
       return true;
     } catch (_) {
-      final fallbackUser = UserModel(
-        id: state.customerId ?? 'usr_1',
-        customerId: state.customerId ?? 'CUST-2026-0001',
-        fullName: name,
-        mobileNumber: phone,
-        email: state.identifier?.contains('@') == true ? state.identifier : null,
-      );
       state = state.copyWith(
-        status: AuthStatus.authenticated,
-        user: fallbackUser,
+        status: AuthStatus.needsProfile,
+        errorMessage: 'Could not complete registration. Please try again.',
       );
-      return true;
+      return false;
     }
   }
 
   Future<bool> signInWithGoogle(String idToken) async {
-    state = state.copyWith(status: AuthStatus.authenticating, errorMessage: null);
+    state = state.copyWith(
+      status: AuthStatus.authenticating,
+      errorMessage: null,
+    );
     try {
       final result = await _authService.signInWithGoogle(idToken);
       if (result.isNewCustomer) {
         state = state.copyWith(
           status: AuthStatus.needsProfile,
+          registrationToken: result.registrationToken,
           customerId: result.customerId,
           errorMessage: null,
         );
@@ -241,7 +230,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> updateProfile(String fullName, String? email, DateTime? dob, String? gender) async {
+  Future<void> updateProfile(
+    String fullName,
+    String? email,
+    DateTime? dob,
+    String? gender,
+  ) async {
     if (state.user != null) {
       final updated = state.user!.copyWith(
         fullName: fullName,
@@ -261,7 +255,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    await _authService.clearSession();
+    await _authService.logout();
     state = const AuthState(
       status: AuthStatus.unauthenticated,
       user: null,

@@ -52,7 +52,7 @@ class OrderStatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(8), // Explicit 8px rounded rectangle
-        border: Border.all(color: border.withOpacity(0.5), width: 1.2),
+        border: Border.all(color: border.withValues(alpha: 0.5), width: 1.2),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

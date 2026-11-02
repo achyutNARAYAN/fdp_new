@@ -9,14 +9,12 @@ import '../../shared/models/order_model.dart';
 import '../../shared/providers/order_provider.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
 import '../../shared/widgets/buttons/app_secondary_button.dart';
+import '../../shared/widgets/layout/no_order_data.dart';
 
 class CancelOrderScreen extends ConsumerStatefulWidget {
   final String orderId;
 
-  const CancelOrderScreen({
-    super.key,
-    required this.orderId,
-  });
+  const CancelOrderScreen({super.key, required this.orderId});
 
   @override
   ConsumerState<CancelOrderScreen> createState() => _CancelOrderScreenState();
@@ -38,8 +36,13 @@ class _CancelOrderScreenState extends ConsumerState<CancelOrderScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusDialog)),
-        title: const Text('Confirm Cancellation?', style: AppTypography.heading2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusDialog),
+        ),
+        title: const Text(
+          'Confirm Cancellation?',
+          style: AppTypography.heading2,
+        ),
         content: Text(
           'Are you sure you want to cancel Order #${order.orderId}?\nThis action cannot be undone.',
           style: AppTypography.body,
@@ -56,10 +59,15 @@ class _CancelOrderScreenState extends ConsumerState<CancelOrderScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              ref.read(orderProvider.notifier).cancelOrder(reason: _selectedReason);
+              ref
+                  .read(orderProvider.notifier)
+                  .cancelOrder(reason: _selectedReason);
               context.go('/order-details/${order.orderId}');
             },
-            child: const Text('Cancel Order', style: TextStyle(color: AppColors.accent)),
+            child: const Text(
+              'Cancel Order',
+              style: TextStyle(color: AppColors.accent),
+            ),
           ),
         ],
       ),
@@ -69,10 +77,14 @@ class _CancelOrderScreenState extends ConsumerState<CancelOrderScreen> {
   @override
   Widget build(BuildContext context) {
     final orderState = ref.watch(orderProvider);
-    final order = orderState.pastOrders.firstWhere(
-      (o) => o.orderId == widget.orderId,
-      orElse: () => orderState.activeOrder ?? orderState.pastOrders.first,
-    );
+    final order =
+        orderState.pastOrders
+            .where((o) => o.orderId == widget.orderId)
+            .firstOrNull ??
+        (orderState.activeOrder?.orderId == widget.orderId
+            ? orderState.activeOrder
+            : null);
+    if (order == null) return const NoOrderData();
     final bool isPaid = order.paymentStatus == PaymentStatus.paid;
 
     return Scaffold(
@@ -89,7 +101,10 @@ class _CancelOrderScreenState extends ConsumerState<CancelOrderScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Reason for Cancellation', style: AppTypography.heading2),
+                  const Text(
+                    'Reason for Cancellation',
+                    style: AppTypography.heading2,
+                  ),
                   const SizedBox(height: 6),
                   const Text(
                     'Please tell us why you are cancelling to help our confectionery partners improve.',
@@ -101,7 +116,9 @@ class _CancelOrderScreenState extends ConsumerState<CancelOrderScreen> {
                   Container(
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusCard,
+                      ),
                       border: Border.all(color: AppColors.neutralLight),
                     ),
                     child: Column(
@@ -111,7 +128,8 @@ class _CancelOrderScreenState extends ConsumerState<CancelOrderScreen> {
                           groupValue: _selectedReason,
                           activeColor: AppColors.primary,
                           title: Text(r, style: AppTypography.body),
-                          onChanged: (val) => setState(() => _selectedReason = val!),
+                          onChanged: (val) =>
+                              setState(() => _selectedReason = val!),
                         );
                       }).toList(),
                     ),
@@ -125,19 +143,28 @@ class _CancelOrderScreenState extends ConsumerState<CancelOrderScreen> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: AppColors.primaryTint10,
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                        borderRadius: BorderRadius.circular(
+                          AppDimensions.radiusCard,
+                        ),
                         border: Border.all(color: AppColors.primary),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.info_outline, color: AppColors.textPrimary, size: 22),
+                          const Icon(
+                            Icons.info_outline,
+                            color: AppColors.textPrimary,
+                            size: 22,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Refund Preview', style: AppTypography.itemName),
+                                const Text(
+                                  'Refund Preview',
+                                  style: AppTypography.itemName,
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'Refund of ${Formatters.formatCurrency(order.totalAmount)} will be credited back to your original payment method. Expected in 2 business days.',
@@ -161,7 +188,11 @@ class _CancelOrderScreenState extends ConsumerState<CancelOrderScreen> {
             decoration: const BoxDecoration(
               color: AppColors.surface,
               boxShadow: [
-                BoxShadow(color: Color(0x14171A14), offset: Offset(0, -4), blurRadius: 16),
+                BoxShadow(
+                  color: Color(0x14171A14),
+                  offset: Offset(0, -4),
+                  blurRadius: 16,
+                ),
               ],
             ),
             child: Column(
@@ -186,4 +217,3 @@ class _CancelOrderScreenState extends ConsumerState<CancelOrderScreen> {
     );
   }
 }
-

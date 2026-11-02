@@ -51,23 +51,18 @@ import '../../features/settings/settings_screen.dart';
 import '../../shared/widgets/layout/main_scaffold.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> _shellNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/login',
   routes: [
     // Screen 1: Splash
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const SplashScreen(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
 
     // Screen 2: Login
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
 
     // Screen 3: OTP Verification
     GoRoute(
@@ -102,17 +97,11 @@ final GoRouter appRouter = GoRouter(
         } else if (location.startsWith('/profile')) {
           index = 4;
         }
-        return MainScaffold(
-          currentIndex: index,
-          child: child,
-        );
+        return MainScaffold(currentIndex: index, child: child);
       },
       routes: [
         // Screen 6: Home
-        GoRoute(
-          path: '/home',
-          builder: (context, state) => const HomeScreen(),
-        ),
+        GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
 
         // Screen 7: Search
         GoRoute(
@@ -162,7 +151,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/shop/:id',
       builder: (context, state) {
-        final id = state.pathParameters['id'] ?? 'shop_anand';
+        final id = state.pathParameters['id'] ?? '';
         return ShopPageScreen(shopId: id);
       },
     ),
@@ -171,16 +160,13 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/item/:id',
       builder: (context, state) {
-        final id = state.pathParameters['id'] ?? 'item_kaju_katli';
+        final id = state.pathParameters['id'] ?? '';
         return ItemDetailsScreen(itemId: id);
       },
     ),
 
     // Screen 14: Cart
-    GoRoute(
-      path: '/cart',
-      builder: (context, state) => const CartScreen(),
-    ),
+    GoRoute(path: '/cart', builder: (context, state) => const CartScreen()),
 
     // Screen 15: Delivery Time
     GoRoute(
@@ -231,7 +217,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/payment-result',
       builder: (context, state) {
-        final status = state.uri.queryParameters['status'] ?? 'success';
+        final status = state.uri.queryParameters['status'] ?? '';
         return PaymentResultScreen(status: status);
       },
     ),
@@ -240,7 +226,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/order-request-submitted/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return OrderRequestSubmittedScreen(orderId: orderId);
       },
     ),
@@ -249,7 +235,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/waiting-confirmation/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return WaitingConfirmationScreen(orderId: orderId);
       },
     ),
@@ -258,7 +244,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/order-confirmed/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return OrderConfirmedScreen(orderId: orderId);
       },
     ),
@@ -267,7 +253,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/shop-proposed-changes/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return ShopProposedChangesScreen(orderId: orderId);
       },
     ),
@@ -276,7 +262,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/shop-declined-order/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return ShopDeclinedOrderScreen(orderId: orderId);
       },
     ),
@@ -291,7 +277,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/confirmation-timeout/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return ConfirmationTimeoutScreen(orderId: orderId);
       },
     ),
@@ -300,7 +286,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/order-tracking/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return OrderTrackingScreen(orderId: orderId);
       },
     ),
@@ -309,7 +295,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/live-map/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return LiveDeliveryMapScreen(orderId: orderId);
       },
     ),
@@ -318,7 +304,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/delivery-issue/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return DeliveryIssueScreen(orderId: orderId);
       },
     ),
@@ -327,7 +313,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/order-delivered/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return OrderDeliveredScreen(orderId: orderId);
       },
     ),
@@ -336,7 +322,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/rate-review/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return RateReviewScreen(orderId: orderId);
       },
     ),
@@ -345,7 +331,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/order-details/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return OrderDetailsScreen(orderId: orderId);
       },
     ),
@@ -354,7 +340,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/invoice/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return GstInvoiceScreen(orderId: orderId);
       },
     ),
@@ -363,7 +349,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/cancel-order/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return CancelOrderScreen(orderId: orderId);
       },
     ),
@@ -372,7 +358,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/refund-status/:orderId',
       builder: (context, state) {
-        final orderId = state.pathParameters['orderId'] ?? 'FD10245';
+        final orderId = state.pathParameters['orderId'] ?? '';
         return RefundStatusScreen(orderId: orderId);
       },
     ),
@@ -414,7 +400,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/ticket-details/:ticketId',
       builder: (context, state) {
-        final ticketId = state.pathParameters['ticketId'] ?? 'TCK-8812';
+        final ticketId = state.pathParameters['ticketId'] ?? '';
         return TicketDetailsScreen(ticketId: ticketId);
       },
     ),
@@ -426,4 +412,3 @@ final GoRouter appRouter = GoRouter(
     ),
   ],
 );
-

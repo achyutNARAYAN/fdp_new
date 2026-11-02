@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
-import '../../shared/data/mock_data.dart';
 import '../../shared/providers/location_provider.dart';
 import '../../shared/providers/notification_provider.dart';
 import '../../shared/providers/store_provider.dart';
@@ -15,16 +14,6 @@ import '../../shared/widgets/cards/item_card.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  static const List<Map<String, dynamic>> _categories = [
-    {'name': 'Sweets', 'icon': Icons.bakery_dining, 'color': Color(0xFFE8EFE3)},
-    {'name': 'Ice Cream', 'icon': Icons.icecream_outlined, 'color': Color(0xFFFDEEE3)},
-    {'name': 'Cakes', 'icon': Icons.cake_outlined, 'color': Color(0xFFEBEFE7)},
-    {'name': 'Desserts', 'icon': Icons.cookie_outlined, 'color': Color(0xFFF9EBE0)},
-    {'name': 'Snacks', 'icon': Icons.local_pizza_outlined, 'color': Color(0xFFE8EFE3)},
-    {'name': 'Beverages', 'icon': Icons.local_cafe_outlined, 'color': Color(0xFFEBEFE7)},
-    {'name': 'Gift Boxes', 'icon': Icons.card_giftcard, 'color': Color(0xFFF9EBE0)},
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locationState = ref.watch(locationProvider);
@@ -32,8 +21,13 @@ class HomeScreen extends ConsumerWidget {
     final storesState = ref.watch(storesProvider);
     final catalogState = ref.watch(catalogProvider);
 
-    final displayShops = storesState.stores.isNotEmpty ? storesState.stores : MockData.shops;
-    final displayItems = catalogState.items.isNotEmpty ? catalogState.items : MockData.allItems;
+    final displayShops = storesState.stores;
+    final displayItems = catalogState.items;
+    final categories = catalogState.items
+        .map((item) => item.category)
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -53,11 +47,17 @@ class HomeScreen extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: Container(
                   height: AppDimensions.heightTopBar,
-                  padding: const EdgeInsets.symmetric(horizontal: AppDimensions.p16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.p16,
+                  ),
                   color: AppColors.surface,
                   child: Row(
                     children: [
-                      const Icon(Icons.location_on, color: AppColors.accent, size: 22),
+                      const Icon(
+                        Icons.location_on,
+                        color: AppColors.accent,
+                        size: 22,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: GestureDetector(
@@ -75,14 +75,21 @@ class HomeScreen extends ConsumerWidget {
                                 children: [
                                   Flexible(
                                     child: Text(
-                                      locationState.selectedAddress.title,
-                                      style: AppTypography.itemName.copyWith(fontSize: 15),
+                                      locationState.selectedAddress?.title ??
+                                          'Choose address',
+                                      style: AppTypography.itemName.copyWith(
+                                        fontSize: 15,
+                                      ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                   const SizedBox(width: 4),
-                                  const Icon(Icons.keyboard_arrow_down, size: 18, color: AppColors.textPrimary),
+                                  const Icon(
+                                    Icons.keyboard_arrow_down,
+                                    size: 18,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ],
                               ),
                             ],
@@ -92,11 +99,18 @@ class HomeScreen extends ConsumerWidget {
 
                       // Notification bell with touch target & badge
                       IconButton(
-                        constraints: const BoxConstraints(minWidth: AppDimensions.minTouchTarget, minHeight: AppDimensions.minTouchTarget),
+                        constraints: const BoxConstraints(
+                          minWidth: AppDimensions.minTouchTarget,
+                          minHeight: AppDimensions.minTouchTarget,
+                        ),
                         icon: Stack(
                           clipBehavior: Clip.none,
                           children: [
-                            const Icon(Icons.notifications_none, size: 24, color: AppColors.textPrimary),
+                            const Icon(
+                              Icons.notifications_none,
+                              size: 24,
+                              color: AppColors.textPrimary,
+                            ),
                             if (unreadNotifs > 0)
                               Positioned(
                                 top: -2,
@@ -124,8 +138,15 @@ class HomeScreen extends ConsumerWidget {
 
                       // Cart Icon (touch target)
                       IconButton(
-                        constraints: const BoxConstraints(minWidth: AppDimensions.minTouchTarget, minHeight: AppDimensions.minTouchTarget),
-                        icon: const Icon(Icons.shopping_bag_outlined, size: 24, color: AppColors.textPrimary),
+                        constraints: const BoxConstraints(
+                          minWidth: AppDimensions.minTouchTarget,
+                          minHeight: AppDimensions.minTouchTarget,
+                        ),
+                        icon: const Icon(
+                          Icons.shopping_bag_outlined,
+                          size: 24,
+                          color: AppColors.textPrimary,
+                        ),
                         onPressed: () => context.push('/cart'),
                       ),
                     ],
@@ -143,16 +164,25 @@ class HomeScreen extends ConsumerWidget {
                       height: 52,
                       decoration: BoxDecoration(
                         color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusInput),
-                        border: Border.all(color: AppColors.neutralBorder, width: 1.2),
+                        borderRadius: BorderRadius.circular(
+                          AppDimensions.radiusInput,
+                        ),
+                        border: Border.all(
+                          color: AppColors.neutralBorder,
+                          width: 1.2,
+                        ),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: const Row(
                         children: [
-                          Icon(Icons.search, color: AppColors.textSecondary, size: 22),
+                          Icon(
+                            Icons.search,
+                            color: AppColors.textSecondary,
+                            size: 22,
+                          ),
                           SizedBox(width: 12),
                           Text(
-                            'Search for kaju katli, gelato, cakes...',
+                            'Search items and stores...',
                             style: AppTypography.bodySmall,
                           ),
                         ],
@@ -168,41 +198,51 @@ class HomeScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: AppDimensions.p16),
-                      child: Text('Explore Categories', style: AppTypography.sectionTitle),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppDimensions.p16,
+                      ),
+                      child: Text(
+                        'Explore Categories',
+                        style: AppTypography.sectionTitle,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
                       height: 104,
                       child: ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: AppDimensions.p16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppDimensions.p16,
+                        ),
                         scrollDirection: Axis.horizontal,
-                        itemCount: _categories.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 14),
+                        itemCount: categories.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 14),
                         itemBuilder: (context, index) {
-                          final cat = _categories[index];
+                          final name = categories[index];
                           return GestureDetector(
-                            onTap: () => context.push('/category/${cat['name']}'),
+                            onTap: () => context.push('/category/${name}'),
                             child: Column(
                               children: [
                                 Container(
                                   width: 72,
                                   height: 72,
                                   decoration: BoxDecoration(
-                                    color: cat['color'] as Color,
+                                    color: AppColors.primaryTint10,
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: AppColors.neutralLight, width: 1),
+                                    border: Border.all(
+                                      color: AppColors.neutralLight,
+                                      width: 1,
+                                    ),
                                   ),
                                   alignment: Alignment.center,
                                   child: Icon(
-                                    cat['icon'] as IconData,
+                                    Icons.category_outlined,
                                     size: 32,
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  cat['name'] as String,
+                                  name,
                                   style: AppTypography.caption.copyWith(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -218,103 +258,54 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: AppDimensions.p24)),
-
-              // Calm Festival / Gifting Banner
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppDimensions.p16),
-                  child: Container(
-                    padding: const EdgeInsets.all(AppDimensions.p20),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryTint20,
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-                      border: Border.all(color: AppColors.primary, width: 1),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Artisanal Gifting Hampers',
-                                style: AppTypography.heading2,
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Celebrate festive moments with bespoke silver-leaf sweets & curated treats.',
-                                style: AppTypography.bodySmall,
-                              ),
-                              const SizedBox(height: 12),
-                              TextButton(
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                onPressed: () => context.push('/category/Gift Boxes'),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'Explore Collection',
-                                      style: TextStyle(
-                                        color: AppColors.textPrimary,
-                                        fontWeight: FontWeight.bold,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                    SizedBox(width: 4),
-                                    Icon(Icons.arrow_forward, size: 16, color: AppColors.textPrimary),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(Icons.card_giftcard, size: 40, color: AppColors.accent),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: AppDimensions.p24),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: AppDimensions.p24)),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: AppDimensions.p24),
+              ),
 
               // Popular Near You (Live Catalog Sweets & Treats)
               SliverToBoxAdapter(
                 child: Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppDimensions.p16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppDimensions.p16,
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
                             children: [
-                              const Text('Popular Near You', style: AppTypography.sectionTitle),
+                              const Text(
+                                'Popular Near You',
+                                style: AppTypography.sectionTitle,
+                              ),
                               if (catalogState.isLoading) ...[
                                 const SizedBox(width: 8),
                                 const SizedBox(
                                   width: 14,
                                   height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.primary,
+                                  ),
                                 ),
                               ],
                             ],
                           ),
                           TextButton(
-                            onPressed: () => context.push('/category/Sweets'),
-                            child: const Text('See all', style: TextStyle(color: AppColors.textPrimary)),
+                            onPressed: categories.isEmpty
+                                ? null
+                                : () => context.push(
+                                    '/category/${categories.first}',
+                                  ),
+                            child: const Text(
+                              'See all',
+                              style: TextStyle(color: AppColors.textPrimary),
+                            ),
                           ),
                         ],
                       ),
@@ -323,10 +314,12 @@ class HomeScreen extends ConsumerWidget {
                     SizedBox(
                       height: 310,
                       child: ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: AppDimensions.p16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppDimensions.p16,
+                        ),
                         scrollDirection: Axis.horizontal,
                         itemCount: displayItems.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        separatorBuilder: (_, _) => const SizedBox(width: 12),
                         itemBuilder: (context, index) {
                           final item = displayItems[index];
                           return SizedBox(
@@ -343,31 +336,44 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: AppDimensions.p24)),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: AppDimensions.p24),
+              ),
 
               // Shops Near You (Live Stores List)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppDimensions.p16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.p16,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          const Text('Shops Near You', style: AppTypography.sectionTitle),
+                          const Text(
+                            'Shops Near You',
+                            style: AppTypography.sectionTitle,
+                          ),
                           if (storesState.isLoading) ...[
                             const SizedBox(width: 8),
                             const SizedBox(
                               width: 14,
                               height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ],
                         ],
                       ),
                       TextButton(
                         onPressed: () => context.push('/search'),
-                        child: const Text('Filters', style: TextStyle(color: AppColors.textPrimary)),
+                        child: const Text(
+                          'Filters',
+                          style: TextStyle(color: AppColors.textPrimary),
+                        ),
                       ),
                     ],
                   ),
@@ -375,18 +381,17 @@ class HomeScreen extends ConsumerWidget {
               ),
 
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: AppDimensions.p16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppDimensions.p16,
+                ),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final shop = displayShops[index];
-                      return ShopCard(
-                        shop: shop,
-                        onTap: () => context.push('/shop/${shop.id}'),
-                      );
-                    },
-                    childCount: displayShops.length,
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final shop = displayShops[index];
+                    return ShopCard(
+                      shop: shop,
+                      onTap: () => context.push('/shop/${shop.id}'),
+                    );
+                  }, childCount: displayShops.length),
                 ),
               ),
 

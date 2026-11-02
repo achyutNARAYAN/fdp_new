@@ -7,26 +7,26 @@ import '../../core/utils/formatters.dart';
 import '../../shared/providers/order_provider.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
 import '../../shared/widgets/buttons/app_secondary_button.dart';
+import '../../shared/widgets/layout/no_order_data.dart';
 
 class GstInvoiceScreen extends ConsumerWidget {
   final String orderId;
 
-  const GstInvoiceScreen({
-    super.key,
-    required this.orderId,
-  });
+  const GstInvoiceScreen({super.key, required this.orderId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderState = ref.watch(orderProvider);
-    final order = orderState.pastOrders.firstWhere(
-      (o) => o.orderId == orderId,
-      orElse: () => orderState.activeOrder ?? orderState.pastOrders.first,
-    );
+    final order =
+        orderState.pastOrders.where((o) => o.orderId == orderId).firstOrNull ??
+        (orderState.activeOrder?.orderId == orderId
+            ? orderState.activeOrder
+            : null);
+    if (order == null) return const NoOrderData();
 
     final double taxableItems = order.subtotal - order.discountAmount;
-    final double cgst = (taxableItems * 0.025);
-    final double sgst = (taxableItems * 0.025);
+    final double cgst = order.taxes / 2;
+    final double sgst = order.taxes / 2;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -54,7 +54,9 @@ class GstInvoiceScreen extends ConsumerWidget {
                       height: 8,
                       decoration: const BoxDecoration(
                         color: AppColors.primary,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
                       ),
                     ),
 
@@ -71,22 +73,42 @@ class GstInvoiceScreen extends ConsumerWidget {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(order.shopName, style: AppTypography.heading2),
+                                  Text(
+                                    order.shopName,
+                                    style: AppTypography.heading2,
+                                  ),
                                   const SizedBox(height: 2),
-                                  Text(order.shopAddress, style: AppTypography.caption),
-                                  Text('FSSAI Lic. No: ${order.fssaiLicense}', style: AppTypography.caption),
-                                  Text('GSTIN: ${order.gstin}', style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold)),
+                                  Text(
+                                    order.shopAddress,
+                                    style: AppTypography.caption,
+                                  ),
+                                  Text(
+                                    'FSSAI Lic. No: ${order.fssaiLicense}',
+                                    style: AppTypography.caption,
+                                  ),
+                                  Text(
+                                    'GSTIN: ${order.gstin}',
+                                    style: AppTypography.caption.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ],
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.primaryTint20,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: const Text(
                                   'TAX INVOICE',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                  ),
                                 ),
                               ),
                             ],
@@ -102,22 +124,52 @@ class GstInvoiceScreen extends ConsumerWidget {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Billed To (Customer):', style: AppTypography.caption),
-                                  const Text('Aarav Sharma', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  const Text(
+                                    'Billed To (Customer):',
+                                    style: AppTypography.caption,
+                                  ),
+                                  const Text(
+                                    'Aarav Sharma',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
                                   SizedBox(
                                     width: 160,
-                                    child: Text(order.deliveryAddress, style: AppTypography.caption),
+                                    child: Text(
+                                      order.deliveryAddress,
+                                      style: AppTypography.caption,
+                                    ),
                                   ),
-                                  const Text('State: Karnataka (29)', style: AppTypography.caption),
+                                  const Text(
+                                    'State: Karnataka (29)',
+                                    style: AppTypography.caption,
+                                  ),
                                 ],
                               ),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text('Invoice #: INV-${order.orderId}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                  Text('Date: ${Formatters.formatDate(order.createdAt)}', style: AppTypography.caption),
-                                  Text('Order ID: #${order.orderId}', style: AppTypography.caption),
-                                  Text('Payment: ${order.paymentStatus.label}', style: AppTypography.caption),
+                                  Text(
+                                    'Invoice #: INV-${order.orderId}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Date: ${Formatters.formatDate(order.createdAt)}',
+                                    style: AppTypography.caption,
+                                  ),
+                                  Text(
+                                    'Order ID: #${order.orderId}',
+                                    style: AppTypography.caption,
+                                  ),
+                                  Text(
+                                    'Payment: ${order.paymentStatus.label}',
+                                    style: AppTypography.caption,
+                                  ),
                                 ],
                               ),
                             ],
@@ -138,45 +190,117 @@ class GstInvoiceScreen extends ConsumerWidget {
                                   color: AppColors.primaryTint10,
                                   child: const Row(
                                     children: [
-                                      Expanded(flex: 4, child: Text('Item / HSN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-                                      Expanded(flex: 2, child: Text('Qty / Wt', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.center)),
-                                      Expanded(flex: 2, child: Text('Rate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.right)),
-                                      Expanded(flex: 2, child: Text('Total', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.right)),
+                                      Expanded(
+                                        flex: 4,
+                                        child: Text(
+                                          'Item / HSN',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          'Qty / Wt',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          'Rate',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                          ),
+                                          textAlign: TextAlign.right,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          'Total',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                          ),
+                                          textAlign: TextAlign.right,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
                                 ...order.items.map((cartItem) {
                                   return Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 6,
+                                    ),
                                     decoration: const BoxDecoration(
-                                      border: Border(top: BorderSide(color: AppColors.divider)),
+                                      border: Border(
+                                        top: BorderSide(
+                                          color: AppColors.divider,
+                                        ),
+                                      ),
                                     ),
                                     child: Row(
                                       children: [
                                         Expanded(
                                           flex: 4,
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              Text(cartItem.item.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                                              const Text('HSN: 21069099 (Sweets 5% GST)', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
+                                              Text(
+                                                cartItem.item.name,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
                                             ],
                                           ),
                                         ),
                                         Expanded(
                                           flex: 2,
-                                          child: Text('${cartItem.quantity} (${cartItem.selectedVariant.label})',
-                                              style: const TextStyle(fontSize: 11), textAlign: TextAlign.center),
+                                          child: Text(
+                                            '${cartItem.quantity} (${cartItem.selectedVariant.label})',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
                                         ),
                                         Expanded(
                                           flex: 2,
-                                          child: Text(Formatters.formatCurrency(cartItem.selectedVariant.price),
-                                              style: const TextStyle(fontSize: 11), textAlign: TextAlign.right),
+                                          child: Text(
+                                            Formatters.formatCurrency(
+                                              cartItem.selectedVariant.price,
+                                            ),
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                            ),
+                                            textAlign: TextAlign.right,
+                                          ),
                                         ),
                                         Expanded(
                                           flex: 2,
-                                          child: Text(Formatters.formatCurrency(cartItem.totalPrice),
-                                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.right),
+                                          child: Text(
+                                            Formatters.formatCurrency(
+                                              cartItem.totalPrice,
+                                            ),
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            textAlign: TextAlign.right,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -189,20 +313,50 @@ class GstInvoiceScreen extends ConsumerWidget {
                           const SizedBox(height: 16),
 
                           // Tax Computation Summary (CGST & SGST)
-                          _invRow('Taxable Value of Food Items', Formatters.formatCurrency(taxableItems)),
-                          _invRow('Central GST (CGST @ 2.5%)', Formatters.formatCurrency(cgst)),
-                          _invRow('State GST (SGST @ 2.5%)', Formatters.formatCurrency(sgst)),
-                          _invRow('Delivery Partner Logistics Fee', Formatters.formatCurrency(order.deliveryFee)),
-                          _invRow('Insulated Cold Packaging Charge', Formatters.formatCurrency(order.packagingFee)),
-                          _invRow('Platform Convenience Fee', Formatters.formatCurrency(order.platformFee)),
+                          _invRow(
+                            'Taxable Value of Food Items',
+                            Formatters.formatCurrency(taxableItems),
+                          ),
+                          _invRow(
+                            'Central GST',
+                            Formatters.formatCurrency(cgst),
+                          ),
+                          _invRow('State GST', Formatters.formatCurrency(sgst)),
+                          _invRow(
+                            'Delivery Partner Logistics Fee',
+                            Formatters.formatCurrency(order.deliveryFee),
+                          ),
+                          _invRow(
+                            'Insulated Cold Packaging Charge',
+                            Formatters.formatCurrency(order.packagingFee),
+                          ),
+                          _invRow(
+                            'Platform Convenience Fee',
+                            Formatters.formatCurrency(order.platformFee),
+                          ),
                           if (order.tipAmount > 0)
-                            _invRow('Delivery Tip (Untaxed Grant)', Formatters.formatCurrency(order.tipAmount)),
+                            _invRow(
+                              'Delivery Tip (Untaxed Grant)',
+                              Formatters.formatCurrency(order.tipAmount),
+                            ),
                           const Divider(height: 20),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Total Invoice Amount (INR)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                              Text(Formatters.formatCurrency(order.totalAmount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const Text(
+                                'Total Invoice Amount (INR)',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                Formatters.formatCurrency(order.totalAmount),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ],
                           ),
 
@@ -211,7 +365,10 @@ class GstInvoiceScreen extends ConsumerWidget {
                           const Center(
                             child: Text(
                               'This is a digitally generated GST Tax Invoice under Section 31 of CGST Act, 2017. No signature required.',
-                              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textSecondary,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -230,7 +387,11 @@ class GstInvoiceScreen extends ConsumerWidget {
             decoration: const BoxDecoration(
               color: AppColors.surface,
               boxShadow: [
-                BoxShadow(color: Color(0x14171A14), offset: Offset(0, -4), blurRadius: 16),
+                BoxShadow(
+                  color: Color(0x14171A14),
+                  offset: Offset(0, -4),
+                  blurRadius: 16,
+                ),
               ],
             ),
             child: Row(
@@ -241,7 +402,9 @@ class GstInvoiceScreen extends ConsumerWidget {
                     icon: Icons.share_outlined,
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Invoice link copied to clipboard.')),
+                        const SnackBar(
+                          content: Text('Invoice link copied to clipboard.'),
+                        ),
                       );
                     },
                   ),
@@ -253,7 +416,11 @@ class GstInvoiceScreen extends ConsumerWidget {
                     icon: Icons.download_outlined,
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('GST Invoice downloaded to your device.')),
+                        const SnackBar(
+                          content: Text(
+                            'GST Invoice downloaded to your device.',
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -272,8 +439,17 @@ class GstInvoiceScreen extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );

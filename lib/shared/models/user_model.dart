@@ -18,7 +18,7 @@ class UserModel {
     this.email,
     this.dateOfBirth,
     this.gender,
-    this.termsAccepted = true,
+    this.termsAccepted = false,
     this.isEmailVerified = false,
     this.avatarUrl,
   });
@@ -69,18 +69,18 @@ class UserModel {
     return UserModel(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       customerId: json['customerId']?.toString() ?? '',
-      fullName: json['name']?.toString() ?? 'Customer',
+      fullName: json['name']?.toString() ?? '',
       mobileNumber: json['phone']?.toString() ?? '',
       email: json['email']?.toString(),
+      dateOfBirth: DateTime.tryParse(json['dateOfBirth']?.toString() ?? ''),
+      gender: json['gender']?.toString(),
+      termsAccepted: json['termsAccepted'] == true,
       isEmailVerified: json['isEmailVerified'] ?? false,
       avatarUrl: json['avatarUrl']?.toString(),
     );
   }
 
   Map<String, dynamic> toApiJson() {
-    return {
-      'name': fullName,
-      'phone': mobileNumber,
-    };
+    return {'name': fullName, 'phone': mobileNumber};
   }
 }

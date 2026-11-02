@@ -27,6 +27,24 @@ class ItemCard extends ConsumerWidget {
     final inCart = cartItemIndex >= 0;
     final quantity = inCart ? cart.items[cartItemIndex].quantity : 0;
     final defaultVariant = item.defaultVariant;
+    if (defaultVariant == null) {
+      return Card(
+        child: ListTile(
+          title: Text(item.name),
+          subtitle: item.shopName.isEmpty ? null : Text(item.shopName),
+          onTap: onTap,
+        ),
+      );
+    }
+    if (item.availability == ItemAvailability.unavailable) {
+      return Card(
+        child: ListTile(
+          title: Text(item.name),
+          subtitle: const Text('Unavailable'),
+          enabled: false,
+        ),
+      );
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -50,7 +68,10 @@ class ItemCard extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       item.name,
-                      style: AppTypography.itemName.copyWith(fontSize: 14, height: 1.2),
+                      style: AppTypography.itemName.copyWith(
+                        fontSize: 14,
+                        height: 1.2,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -69,7 +90,10 @@ class ItemCard extends ConsumerWidget {
               // Variant unit line
               Text(
                 defaultVariant.label,
-                style: AppTypography.caption.copyWith(color: AppColors.textSecondary, fontSize: 11),
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 11,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -81,10 +105,11 @@ class ItemCard extends ConsumerWidget {
                     Formatters.formatCurrency(defaultVariant.price),
                     style: AppTypography.price.copyWith(fontSize: 15),
                   ),
-                  if (defaultVariant.mrp > defaultVariant.price) ...[
+                  if (defaultVariant.mrp != null &&
+                      defaultVariant.mrp! > defaultVariant.price) ...[
                     const SizedBox(width: 6),
                     Text(
-                      Formatters.formatCurrency(defaultVariant.mrp),
+                      Formatters.formatCurrency(defaultVariant.mrp!),
                       style: AppTypography.caption.copyWith(
                         decoration: TextDecoration.lineThrough,
                         color: AppColors.textSecondary,
@@ -123,9 +148,13 @@ class ItemCard extends ConsumerWidget {
                         child: Image.network(
                           item.imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorBuilder: (_, _, _) => Container(
                             color: AppColors.primaryTint10,
-                            child: const Icon(Icons.bakery_dining, size: 40, color: AppColors.neutral),
+                            child: const Icon(
+                              Icons.bakery_dining,
+                              size: 40,
+                              color: AppColors.neutral,
+                            ),
                           ),
                         ),
                       ),
@@ -136,7 +165,10 @@ class ItemCard extends ConsumerWidget {
                         top: 8,
                         left: 8,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.accentTint12,
                             borderRadius: BorderRadius.circular(6),
@@ -157,15 +189,22 @@ class ItemCard extends ConsumerWidget {
                         top: 8,
                         right: 8,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.65),
+                            color: Colors.black.withValues(alpha: 0.65),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.ac_unit, size: 10, color: Colors.white),
+                              Icon(
+                                Icons.ac_unit,
+                                size: 10,
+                                color: Colors.white,
+                              ),
                               SizedBox(width: 3),
                               Text(
                                 'Cold-chain',
@@ -183,7 +222,13 @@ class ItemCard extends ConsumerWidget {
                     Positioned(
                       bottom: 6,
                       right: 6,
-                      child: _buildAddButtonOrStepper(context, ref, inCart, quantity, cartItemIndex),
+                      child: _buildAddButtonOrStepper(
+                        context,
+                        ref,
+                        inCart,
+                        quantity,
+                        cartItemIndex,
+                      ),
                     ),
                   ],
                 ),
@@ -223,7 +268,9 @@ class ItemCard extends ConsumerWidget {
             ),
           ),
           onPressed: () {
-            if (item.customizationGroups.isNotEmpty || item.allowsCakeMessage || onCustomiseTap != null) {
+            if (item.customizationGroups.isNotEmpty ||
+                item.allowsCakeMessage ||
+                onCustomiseTap != null) {
               if (onCustomiseTap != null) {
                 onCustomiseTap!();
               } else if (onTap != null) {
@@ -231,10 +278,9 @@ class ItemCard extends ConsumerWidget {
               }
             } else {
               try {
-                ref.read(cartProvider.notifier).addItem(
-                      item: item,
-                      variant: item.defaultVariant,
-                    );
+                ref
+                    .read(cartProvider.notifier)
+                    .addItem(item: item, variant: item.defaultVariant!);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Added "${item.name}" to cart'),
@@ -242,7 +288,8 @@ class ItemCard extends ConsumerWidget {
                     action: SnackBarAction(
                       label: 'View Cart',
                       textColor: AppColors.primaryTint20,
-                      onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+                      onPressed: () =>
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar(),
                     ),
                   ),
                 );
@@ -251,7 +298,10 @@ class ItemCard extends ConsumerWidget {
               }
             }
           },
-          child: const Text('ADD', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          child: const Text(
+            'ADD',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          ),
         ),
       );
     }
@@ -276,12 +326,19 @@ class ItemCard extends ConsumerWidget {
           IconButton(
             constraints: const BoxConstraints(minWidth: 28, minHeight: 32),
             padding: EdgeInsets.zero,
-            icon: const Icon(Icons.remove, size: 14, color: AppColors.onPrimary),
+            icon: const Icon(
+              Icons.remove,
+              size: 14,
+              color: AppColors.onPrimary,
+            ),
             onPressed: () {
               final currentCart = ref.read(cartProvider);
-              if (cartItemIndex >= 0 && cartItemIndex < currentCart.items.length) {
+              if (cartItemIndex >= 0 &&
+                  cartItemIndex < currentCart.items.length) {
                 final cartItemId = currentCart.items[cartItemIndex].id;
-                ref.read(cartProvider.notifier).updateQuantity(cartItemId, quantity - 1);
+                ref
+                    .read(cartProvider.notifier)
+                    .updateQuantity(cartItemId, quantity - 1);
               }
             },
           ),
@@ -302,9 +359,12 @@ class ItemCard extends ConsumerWidget {
             icon: const Icon(Icons.add, size: 14, color: AppColors.onPrimary),
             onPressed: () {
               final currentCart = ref.read(cartProvider);
-              if (cartItemIndex >= 0 && cartItemIndex < currentCart.items.length) {
+              if (cartItemIndex >= 0 &&
+                  cartItemIndex < currentCart.items.length) {
                 final cartItemId = currentCart.items[cartItemIndex].id;
-                ref.read(cartProvider.notifier).updateQuantity(cartItemId, quantity + 1);
+                ref
+                    .read(cartProvider.notifier)
+                    .updateQuantity(cartItemId, quantity + 1);
               }
             },
           ),
@@ -321,7 +381,9 @@ class ItemCard extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusDialog)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusDialog),
+        ),
         title: const Text('Replace cart items?', style: AppTypography.heading2),
         content: Text(
           'Your cart has items from ${conflict.currentShopName}. Start a new cart with ${conflict.newShopName}?',
@@ -330,7 +392,10 @@ class ItemCard extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Keep Current Cart', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              'Keep Current Cart',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -338,7 +403,9 @@ class ItemCard extends ConsumerWidget {
               foregroundColor: AppColors.onPrimary,
             ),
             onPressed: () {
-              ref.read(cartProvider.notifier).replaceCartWithItem(
+              ref
+                  .read(cartProvider.notifier)
+                  .replaceCartWithItem(
                     item: conflict.newItem,
                     variant: conflict.variant,
                   );

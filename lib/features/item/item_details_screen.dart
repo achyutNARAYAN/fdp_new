@@ -5,7 +5,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
-import '../../shared/data/mock_data.dart';
 import '../../shared/models/item_model.dart';
 import '../../shared/providers/cart_provider.dart';
 import '../../shared/providers/favorites_provider.dart';
@@ -17,35 +16,27 @@ import 'customise_sheet.dart';
 class ItemDetailsScreen extends ConsumerStatefulWidget {
   final String itemId;
 
-  const ItemDetailsScreen({
-    super.key,
-    required this.itemId,
-  });
+  const ItemDetailsScreen({super.key, required this.itemId});
 
   @override
   ConsumerState<ItemDetailsScreen> createState() => _ItemDetailsScreenState();
 }
 
 class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
-  late ItemVariant _selectedVariant;
+  ItemVariant? _selectedVariant;
   int _quantity = 1;
 
   @override
   void initState() {
     super.initState();
-    final item = _findItem();
-    _selectedVariant = item.defaultVariant;
   }
 
-  ItemModel _findItem() {
+  ItemModel? _findItem() {
     final catalogItems = ref.read(catalogProvider).items;
     final found = catalogItems.where((i) => i.id == widget.itemId).firstOrNull;
     if (found != null) return found;
 
-    return MockData.allItems.firstWhere(
-      (i) => i.id == widget.itemId,
-      orElse: () => MockData.allItems.first,
-    );
+    return null;
   }
 
   void _openCustomiseSheet(ItemModel item) {
@@ -53,13 +44,38 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => CustomiseSheet(item: item, initialVariant: _selectedVariant),
+      builder: (ctx) =>
+          CustomiseSheet(item: item, initialVariant: _selectedVariant!),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final item = _findItem();
+    final itemAsync = ref.watch(catalogItemProvider(widget.itemId));
+    final item = _findItem() ?? itemAsync.asData?.value;
+    if (item == null) {
+      return Scaffold(
+        body: Center(
+          child: itemAsync.isLoading
+              ? const CircularProgressIndicator()
+              : const Text('Item not found.'),
+        ),
+      );
+    }
+    final defaultVariant = item.defaultVariant;
+    if (defaultVariant == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text(item.name)),
+      );
+    }
+    if (item.availability == ItemAvailability.unavailable) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text('${item.name} is unavailable.')),
+      );
+    }
+    _selectedVariant ??= defaultVariant;
     final favs = ref.watch(favoritesProvider);
     final isFav = favs.favoriteItemIds.contains(item.id);
 
@@ -78,7 +94,11 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                 leading: IconButton(
                   icon: const CircleAvatar(
                     backgroundColor: Colors.white,
-                    child: Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 20),
+                    child: Icon(
+                      Icons.arrow_back,
+                      color: AppColors.textPrimary,
+                      size: 20,
+                    ),
                   ),
                   onPressed: () => context.pop(),
                 ),
@@ -93,7 +113,9 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                       ),
                     ),
                     onPressed: () {
-                      ref.read(favoritesProvider.notifier).toggleItemFavorite(item.id);
+                      ref
+                          .read(favoritesProvider.notifier)
+                          .toggleItemFavorite(item.id);
                     },
                   ),
                 ],
@@ -101,7 +123,8 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                   background: Image.network(
                     item.imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(color: AppColors.primaryTint10),
+                    errorBuilder: (_, _, _) =>
+                        Container(color: AppColors.primaryTint10),
                   ),
                 ),
               ),
@@ -113,7 +136,9 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                   child: Container(
                     decoration: const BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusBottomSheet)),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(AppDimensions.radiusBottomSheet),
+                      ),
                     ),
                     padding: const EdgeInsets.all(AppDimensions.p20),
                     child: Column(
@@ -123,7 +148,10 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            DietMarker(dietType: item.dietType, showLabel: true),
+                            DietMarker(
+                              dietType: item.dietType,
+                              showLabel: true,
+                            ),
                             GestureDetector(
                               onTap: () => context.push('/shop/${item.shopId}'),
                               child: Row(
@@ -153,13 +181,19 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                         Row(
                           children: [
                             Text(
-                              Formatters.formatCurrency(_selectedVariant.price),
+                              Formatters.formatCurrency(
+                                _selectedVariant!.price,
+                              ),
                               style: AppTypography.price.copyWith(fontSize: 24),
                             ),
-                            if (_selectedVariant.mrp > _selectedVariant.price) ...[
+                            if (_selectedVariant!.mrp != null &&
+                                _selectedVariant!.mrp! >
+                                    _selectedVariant!.price) ...[
                               const SizedBox(width: 8),
                               Text(
-                                Formatters.formatCurrency(_selectedVariant.mrp),
+                                Formatters.formatCurrency(
+                                  _selectedVariant!.mrp!,
+                                ),
                                 style: AppTypography.bodySmall.copyWith(
                                   decoration: TextDecoration.lineThrough,
                                   fontSize: 16,
@@ -167,13 +201,16 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                               ),
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.accentTint12,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  '${_selectedVariant.discountPercent.toInt()}% OFF',
+                                  '${_selectedVariant!.discountPercent.toInt()}% OFF',
                                   style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
@@ -193,16 +230,26 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                             decoration: BoxDecoration(
                               color: AppColors.primaryTint10,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.primary, width: 1),
+                              border: Border.all(
+                                color: AppColors.primary,
+                                width: 1,
+                              ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.ac_unit, size: 20, color: AppColors.accent),
+                                const Icon(
+                                  Icons.ac_unit,
+                                  size: 20,
+                                  color: AppColors.accent,
+                                ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    item.storageNote ?? 'Packed for cold delivery. Refrigerate on arrival.',
-                                    style: AppTypography.caption.copyWith(color: AppColors.textPrimary),
+                                    item.storageNote ??
+                                        'Packed for cold delivery. Refrigerate on arrival.',
+                                    style: AppTypography.caption.copyWith(
+                                      color: AppColors.textPrimary,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -212,22 +259,32 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                         const SizedBox(height: 24),
 
                         // Weight / Size Variant Selector Pills
-                        const Text('Available Sizes / Weights', style: AppTypography.itemName),
+                        const Text(
+                          'Available Sizes / Weights',
+                          style: AppTypography.itemName,
+                        ),
                         const SizedBox(height: 10),
                         Wrap(
                           spacing: 10,
                           runSpacing: 10,
                           children: item.variants.map((v) {
-                            final isSelected = _selectedVariant.id == v.id;
+                            final isSelected = _selectedVariant!.id == v.id;
                             return GestureDetector(
                               onTap: () => setState(() => _selectedVariant = v),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isSelected ? AppColors.primaryTint20 : AppColors.surface,
+                                  color: isSelected
+                                      ? AppColors.primaryTint20
+                                      : AppColors.surface,
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                    color: isSelected ? AppColors.primary : AppColors.neutralBorder,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.neutralBorder,
                                     width: isSelected ? 2 : 1,
                                   ),
                                 ),
@@ -236,7 +293,9 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                                     Text(
                                       v.label,
                                       style: TextStyle(
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                         color: AppColors.textPrimary,
                                       ),
                                     ),
@@ -258,13 +317,26 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                         const SizedBox(height: 24),
 
                         // Expandable Description Sections
-                        _buildExpandableTile('About this delicacy', item.description, isInitialExpanded: true),
+                        _buildExpandableTile(
+                          'About this delicacy',
+                          item.description,
+                          isInitialExpanded: true,
+                        ),
                         if (item.ingredients.isNotEmpty)
-                          _buildExpandableTile('Pristine Ingredients', item.ingredients.join(', ')),
+                          _buildExpandableTile(
+                            'Pristine Ingredients',
+                            item.ingredients.join(', '),
+                          ),
                         if (item.allergens.isNotEmpty)
-                          _buildExpandableTile('Allergen Information', item.allergens.join(', ')),
+                          _buildExpandableTile(
+                            'Allergen Information',
+                            item.allergens.join(', '),
+                          ),
                         if (item.shelfLife != null)
-                          _buildExpandableTile('Shelf Life & Storage', '${item.shelfLife}\n${item.storageNote ?? ""}'),
+                          _buildExpandableTile(
+                            'Shelf Life & Storage',
+                            '${item.shelfLife}\n${item.storageNote ?? ""}',
+                          ),
 
                         const SizedBox(height: 120),
                       ],
@@ -287,7 +359,11 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                 decoration: const BoxDecoration(
                   color: AppColors.surface,
                   boxShadow: [
-                    BoxShadow(color: Color(0x14171A14), offset: Offset(0, -4), blurRadius: 16),
+                    BoxShadow(
+                      color: Color(0x14171A14),
+                      offset: Offset(0, -4),
+                      blurRadius: 16,
+                    ),
                   ],
                 ),
                 child: Row(
@@ -304,7 +380,9 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.remove, size: 18),
-                            onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
+                            onPressed: _quantity > 1
+                                ? () => setState(() => _quantity--)
+                                : null,
                           ),
                           Text('$_quantity', style: AppTypography.itemName),
                           IconButton(
@@ -319,17 +397,22 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                     // Add / Customise CTA
                     Expanded(
                       child: AppPrimaryButton(
-                        label: item.customizationGroups.isNotEmpty || item.allowsCakeMessage
+                        label:
+                            item.customizationGroups.isNotEmpty ||
+                                item.allowsCakeMessage
                             ? 'Customise Options'
-                            : 'Add • ${Formatters.formatCurrency(_selectedVariant.price * _quantity)}',
+                            : 'Add • ${Formatters.formatCurrency(_selectedVariant!.price * _quantity)}',
                         onPressed: () {
-                          if (item.customizationGroups.isNotEmpty || item.allowsCakeMessage) {
+                          if (item.customizationGroups.isNotEmpty ||
+                              item.allowsCakeMessage) {
                             _openCustomiseSheet(item);
                           } else {
                             try {
-                              ref.read(cartProvider.notifier).addItem(
+                              ref
+                                  .read(cartProvider.notifier)
+                                  .addItem(
                                     item: item,
-                                    variant: _selectedVariant,
+                                    variant: _selectedVariant!,
                                     quantity: _quantity,
                                   );
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -355,7 +438,11 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
     );
   }
 
-  Widget _buildExpandableTile(String title, String content, {bool isInitialExpanded = false}) {
+  Widget _buildExpandableTile(
+    String title,
+    String content, {
+    bool isInitialExpanded = false,
+  }) {
     return ExpansionTile(
       initiallyExpanded: isInitialExpanded,
       tilePadding: EdgeInsets.zero,
@@ -381,7 +468,9 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusDialog)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusDialog),
+        ),
         title: const Text('Replace cart items?', style: AppTypography.heading2),
         content: Text(
           'Your cart has items from ${conflict.currentShopName}. Start a new cart with ${conflict.newShopName}?',
@@ -390,7 +479,10 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Keep Current Cart', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              'Keep Current Cart',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -398,7 +490,9 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
               foregroundColor: AppColors.onPrimary,
             ),
             onPressed: () {
-              ref.read(cartProvider.notifier).replaceCartWithItem(
+              ref
+                  .read(cartProvider.notifier)
+                  .replaceCartWithItem(
                     item: conflict.newItem,
                     variant: conflict.variant,
                     quantity: _quantity,

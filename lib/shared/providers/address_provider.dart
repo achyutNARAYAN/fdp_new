@@ -1,56 +1,59 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/address_model.dart';
-import '../data/mock_data.dart';
 import '../../core/services/customer_api_service.dart';
+import 'auth_provider.dart';
 
 class AddressNotifier extends StateNotifier<List<AddressModel>> {
   final CustomerApiService _apiService;
 
   AddressNotifier({CustomerApiService? apiService})
-      : _apiService = apiService ?? customerApiService,
-        super(MockData.savedAddresses) {
-    loadAddresses();
-  }
+    : _apiService = apiService ?? customerApiService,
+      super(const []);
 
   Future<void> loadAddresses() async {
     try {
-      final addresses = await _apiService.getAddresses();
-      if (addresses.isNotEmpty) {
-        state = addresses;
-      }
+      state = await _apiService.getAddresses();
     } catch (_) {}
   }
 
   Future<void> addAddress(AddressModel address) async {
-    state = [...state, address];
-    try {
-      final saved = await _apiService.addAddress(address);
-      state = state.map((a) => a.id == address.id ? saved : a).toList();
-    } catch (_) {}
+    final saved = await _apiService.addAddress(address);
+    state = [...state, saved];
   }
 
   Future<void> editAddress(AddressModel updatedAddress) async {
-    state = state.map((a) => a.id == updatedAddress.id ? updatedAddress : a).toList();
-    try {
-      await _apiService.updateAddress(updatedAddress);
-    } catch (_) {}
+    final saved = await _apiService.updateAddress(updatedAddress);
+    state = state.map((a) => a.id == saved.id ? saved : a).toList();
   }
 
   Future<void> deleteAddress(String id) async {
+    await _apiService.deleteAddress(id);
     state = state.where((a) => a.id != id).toList();
-    try {
-      await _apiService.deleteAddress(id);
-    } catch (_) {}
   }
 
   Future<void> setDefault(String id) async {
-    state = state.map((a) => a.copyWith(isDefault: a.id == id)).toList();
-    try {
-      await _apiService.setDefaultAddress(id);
-    } catch (_) {}
+    final saved = await _apiService.setDefaultAddress(id);
+    state = state
+        .map((a) => a.copyWith(isDefault: a.id == id))
+        .map((a) => saved?.id == a.id ? saved! : a)
+        .toList();
   }
+
+  void clear() => state = const [];
 }
 
-final addressListProvider = StateNotifierProvider<AddressNotifier, List<AddressModel>>((ref) {
-  return AddressNotifier();
-});
+final addressListProvider =
+    StateNotifierProvider<AddressNotifier, List<AddressModel>>((ref) {
+      final notifier = AddressNotifier();
+      void syncSession(AuthState auth) {
+        if (auth.status == AuthStatus.authenticated) {
+          notifier.loadAddresses();
+        } else {
+          notifier.clear();
+        }
+      }
+
+      ref.listen(authProvider, (_, auth) => syncSession(auth));
+      syncSession(ref.read(authProvider));
+      return notifier;
+    });

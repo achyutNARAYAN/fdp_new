@@ -9,20 +9,19 @@ import '../../shared/models/order_model.dart';
 import '../../shared/providers/order_provider.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
 import '../../shared/widgets/buttons/app_secondary_button.dart';
+import '../../shared/widgets/layout/no_order_data.dart';
 
 class ConfirmationTimeoutScreen extends ConsumerWidget {
   final String orderId;
 
-  const ConfirmationTimeoutScreen({
-    super.key,
-    required this.orderId,
-  });
+  const ConfirmationTimeoutScreen({super.key, required this.orderId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderState = ref.watch(orderProvider);
     final order = orderState.activeOrder;
-    final bool isPaid = order?.paymentStatus == PaymentStatus.paid;
+    if (order == null) return const NoOrderData();
+    final bool isPaid = order.paymentStatus == PaymentStatus.paid;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -41,7 +40,11 @@ class ConfirmationTimeoutScreen extends ConsumerWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.neutral, width: 8),
                 ),
-                child: const Icon(Icons.timer_off_outlined, size: 54, color: AppColors.neutral),
+                child: const Icon(
+                  Icons.timer_off_outlined,
+                  size: 54,
+                  color: AppColors.neutral,
+                ),
               ),
 
               const SizedBox(height: 24),
@@ -54,7 +57,7 @@ class ConfirmationTimeoutScreen extends ConsumerWidget {
               const SizedBox(height: 8),
 
               Text(
-                'Confirmation from ${order?.shopName ?? "the shop"} took longer than 3 minutes. The shop may be facing a sudden surge.',
+                'Confirmation from ${order.shopName ?? "the shop"} took longer than 3 minutes. The shop may be facing a sudden surge.',
                 style: AppTypography.bodySmall,
                 textAlign: TextAlign.center,
               ),
@@ -72,16 +75,22 @@ class ConfirmationTimeoutScreen extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_outline, color: AppColors.onPrimary),
+                      const Icon(
+                        Icons.check_circle_outline,
+                        color: AppColors.onPrimary,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Payment Already Received', style: AppTypography.itemName),
+                            const Text(
+                              'Payment Already Received',
+                              style: AppTypography.itemName,
+                            ),
                             const SizedBox(height: 2),
                             Text(
-                              'Please don’t pay again. If you cancel, ${Formatters.formatCurrency(order?.totalAmount ?? 824.50)} will be refunded.',
+                              'Please don’t pay again. If you cancel, ${Formatters.formatCurrency(order.totalAmount)} will be refunded.',
                               style: AppTypography.caption,
                             ),
                           ],
@@ -116,7 +125,9 @@ class ConfirmationTimeoutScreen extends ConsumerWidget {
                 borderColor: AppColors.accent,
                 textColor: AppColors.accent,
                 onPressed: () {
-                  ref.read(orderProvider.notifier).cancelOrder(reason: 'Confirmation timed out');
+                  ref
+                      .read(orderProvider.notifier)
+                      .cancelOrder(reason: 'Confirmation timed out');
                   context.go('/order-details/$orderId');
                 },
               ),
@@ -124,7 +135,10 @@ class ConfirmationTimeoutScreen extends ConsumerWidget {
 
               TextButton(
                 onPressed: () => context.push('/support'),
-                child: const Text('Contact Customer Support', style: TextStyle(color: AppColors.textPrimary)),
+                child: const Text(
+                  'Contact Customer Support',
+                  style: TextStyle(color: AppColors.textPrimary),
+                ),
               ),
             ],
           ),
@@ -133,4 +147,3 @@ class ConfirmationTimeoutScreen extends ConsumerWidget {
     );
   }
 }
-

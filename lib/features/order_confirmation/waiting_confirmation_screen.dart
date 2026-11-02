@@ -8,20 +8,20 @@ import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
 import '../../shared/models/order_model.dart';
 import '../../shared/providers/order_provider.dart';
+import '../../shared/widgets/layout/no_order_data.dart';
 
 class WaitingConfirmationScreen extends ConsumerStatefulWidget {
   final String orderId;
 
-  const WaitingConfirmationScreen({
-    super.key,
-    required this.orderId,
-  });
+  const WaitingConfirmationScreen({super.key, required this.orderId});
 
   @override
-  ConsumerState<WaitingConfirmationScreen> createState() => _WaitingConfirmationScreenState();
+  ConsumerState<WaitingConfirmationScreen> createState() =>
+      _WaitingConfirmationScreenState();
 }
 
-class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationScreen>
+class _WaitingConfirmationScreenState
+    extends ConsumerState<WaitingConfirmationScreen>
     with TickerProviderStateMixin {
   late AnimationController _haloController;
   late AnimationController _floatController;
@@ -53,7 +53,9 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusDialog)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusDialog),
+        ),
         title: const Text('Cancel Order?', style: AppTypography.heading2),
         content: const Text(
           'Cancellation is completely free while the shop is reviewing your order.\nAre you sure you want to cancel?',
@@ -71,10 +73,15 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              ref.read(orderProvider.notifier).cancelOrder(reason: 'Cancelled while awaiting confirmation');
+              ref
+                  .read(orderProvider.notifier)
+                  .cancelOrder(reason: 'Cancelled while awaiting confirmation');
               context.go('/order-details/${widget.orderId}');
             },
-            child: const Text('Cancel Order', style: TextStyle(color: AppColors.accent)),
+            child: const Text(
+              'Cancel Order',
+              style: TextStyle(color: AppColors.accent),
+            ),
           ),
         ],
       ),
@@ -85,6 +92,7 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
   Widget build(BuildContext context) {
     final orderState = ref.watch(orderProvider);
     final order = orderState.activeOrder;
+    if (order == null) return const NoOrderData();
     final int seconds = orderState.confirmationCountdownSeconds;
     final double progress = seconds / 180.0; // 03:00 to 00:00
 
@@ -119,7 +127,9 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: AppDimensions.p24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppDimensions.p24,
+                ),
                 child: Column(
                   children: [
                     const SizedBox(height: 12),
@@ -132,7 +142,7 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'We’re waiting for ${order?.shopName ?? "the shop"} to confirm your items.',
+                      'We’re waiting for ${order.shopName ?? "the shop"} to confirm your items.',
                       style: AppTypography.bodySmall,
                       textAlign: TextAlign.center,
                     ),
@@ -148,8 +158,10 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
                           AnimatedBuilder(
                             animation: _haloController,
                             builder: (context, child) {
-                              final scale = 1.0 + (_haloController.value * 0.08);
-                              final opacity = (1.0 - _haloController.value) * 0.35;
+                              final scale =
+                                  1.0 + (_haloController.value * 0.08);
+                              final opacity =
+                                  (1.0 - _haloController.value) * 0.35;
                               return Transform.scale(
                                 scale: scale,
                                 child: Container(
@@ -157,7 +169,9 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
                                   height: ringDiameter + 24,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: AppColors.primary.withOpacity(opacity),
+                                    color: AppColors.primary.withValues(
+                                      alpha: opacity,
+                                    ),
                                   ),
                                 ),
                               );
@@ -172,8 +186,11 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
                               value: progress,
                               strokeWidth: 10,
                               strokeCap: StrokeCap.round,
-                              backgroundColor: AppColors.divider, // Concrete Grey 25%
-                              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                              backgroundColor:
+                                  AppColors.divider, // Concrete Grey 25%
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppColors.primary,
+                              ),
                             ),
                           ),
 
@@ -185,7 +202,8 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
                               AnimatedBuilder(
                                 animation: _floatController,
                                 builder: (context, _) {
-                                  final dy = sin(_floatController.value * pi * 2) * 3;
+                                  final dy =
+                                      sin(_floatController.value * pi * 2) * 3;
                                   return Transform.translate(
                                     offset: Offset(0, dy),
                                     child: const Icon(
@@ -241,7 +259,9 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
                     ] else ...[
                       Text(
                         'Live kitchen link established • Awaiting chef acceptance',
-                        style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
 
@@ -252,20 +272,33 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
                       padding: const EdgeInsets.all(AppDimensions.p16),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                        borderRadius: BorderRadius.circular(
+                          AppDimensions.radiusCard,
+                        ),
                         border: Border.all(color: AppColors.neutralLight),
                         boxShadow: AppDimensions.elevationLevel1,
                       ),
                       child: Column(
                         children: [
                           _summaryRow('Order Reference', '#${widget.orderId}'),
-                          _summaryRow('Items Count', '${order?.items.length ?? 2} items'),
-                          _summaryRow('Estimated Delivery', '30–45 min'),
+                          _summaryRow(
+                            'Items Count',
+                            '${order.items.length ?? 0} items',
+                          ),
+                          _summaryRow(
+                            'Estimated Delivery',
+                            order.estimatedDeliveryTime?.toString() ?? '',
+                          ),
                           _summaryRow(
                             'Payment Status',
-                            order?.paymentStatus == PaymentStatus.paid ? 'Confirmed (Paid)' : 'COD Pending',
+                            order.paymentStatus == PaymentStatus.paid
+                                ? 'Confirmed (Paid)'
+                                : 'COD Pending',
                           ),
-                          _summaryRow('Delivery Address', order?.deliveryAddress ?? 'Indiranagar, Bengaluru'),
+                          _summaryRow(
+                            'Delivery Address',
+                            order.deliveryAddress ?? '',
+                          ),
                         ],
                       ),
                     ),
@@ -288,43 +321,6 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
 
                     const SizedBox(height: 16),
 
-                    // Prototype Journey Simulator Bar
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryTint20,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text('PROTOTYPE SIMULATION OUTCOMES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 4,
-                            alignment: WrapAlignment.center,
-                            children: [
-                              _simButton('Shop Confirms', () {
-                                ref.read(orderProvider.notifier).simulateShopConfirms();
-                                context.go('/order-confirmed/${widget.orderId}');
-                              }),
-                              _simButton('Proposes Changes', () {
-                                ref.read(orderProvider.notifier).simulateShopProposesChanges();
-                                context.go('/shop-proposed-changes/${widget.orderId}');
-                              }),
-                              _simButton('Shop Declines', () {
-                                ref.read(orderProvider.notifier).simulateShopDeclines();
-                                context.go('/shop-declined-order/${widget.orderId}');
-                              }),
-                              _simButton('Timeout (00:00)', () {
-                                context.go('/confirmation-timeout/${widget.orderId}');
-                              }),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -346,7 +342,10 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
           Flexible(
             child: Text(
               value,
-              style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: AppTypography.caption.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -354,21 +353,4 @@ class _WaitingConfirmationScreenState extends ConsumerState<WaitingConfirmationS
       ),
     );
   }
-
-  Widget _simButton(String label, VoidCallback onTap) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      onPressed: onTap,
-      child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-    );
-  }
 }
-

@@ -26,13 +26,17 @@ class AuthApiService {
 
   AuthApiService({ApiClient? client}) : _client = client ?? globalApiClient;
 
+  bool get hasSession => _client.authToken?.isNotEmpty == true;
+
   /// Request 6-digit OTP to customer email address
   Future<Map<String, dynamic>> requestOtp(String email) async {
     final res = await _client.post(
       '/customers/auth/request-otp',
       body: {'email': email.trim()},
     );
-    return res.data is Map<String, dynamic> ? res.data as Map<String, dynamic> : {};
+    return res.data is Map<String, dynamic>
+        ? res.data as Map<String, dynamic>
+        : {};
   }
 
   /// Verify 6-digit OTP
@@ -42,17 +46,19 @@ class AuthApiService {
   }) async {
     final res = await _client.post(
       '/customers/auth/verify-otp',
-      body: {
-        'email': email.trim(),
-        'otp': otp.trim(),
-      },
+      body: {'email': email.trim(), 'otp': otp.trim()},
     );
 
     final data = res.data as Map<String, dynamic>;
-    final bool isNew = data['isNewUser'] == true || data['isNewCustomer'] == true;
+    final bool isNew =
+        data['isNewUser'] == true || data['isNewCustomer'] == true;
     final String? token = data['token']?.toString();
     final String? regToken = data['registrationToken']?.toString();
     final String? custId = data['customerId']?.toString();
+
+    if (!isNew && (token == null || token.isEmpty)) {
+      throw Exception('Sign-in response did not include an access token.');
+    }
 
     UserModel? user;
     if (data['customer'] is Map<String, dynamic>) {
@@ -91,6 +97,9 @@ class AuthApiService {
 
     final data = res.data as Map<String, dynamic>;
     final String? token = data['token']?.toString();
+    if (token == null || token.isEmpty) {
+      throw Exception('Registration response did not include an access token.');
+    }
     UserModel user;
     if (data['customer'] is Map<String, dynamic>) {
       user = UserModel.fromApiJson(data['customer'] as Map<String, dynamic>);
@@ -103,7 +112,7 @@ class AuthApiService {
       );
     }
 
-    if (token != null && token.isNotEmpty) {
+    if (token.isNotEmpty) {
       await saveSession(token: token, user: user);
     }
 
@@ -156,9 +165,17 @@ class AuthApiService {
     );
 
     final data = res.data as Map<String, dynamic>;
-    final bool isNew = data['isNewUser'] == true || data['isNewCustomer'] == true;
+    final bool isNew =
+        data['isNewUser'] == true || data['isNewCustomer'] == true;
     final String? token = data['token']?.toString();
     final String? custId = data['customerId']?.toString();
+    final String? regToken = data['registrationToken']?.toString();
+
+    if (!isNew && (token == null || token.isEmpty)) {
+      throw Exception(
+        'Google sign-in response did not include an access token.',
+      );
+    }
 
     UserModel? user;
     if (data['customer'] is Map<String, dynamic>) {
@@ -172,13 +189,22 @@ class AuthApiService {
     return OtpVerificationResult(
       isNewCustomer: isNew,
       token: token,
+      registrationToken: regToken,
       customerId: custId,
       customer: user,
     );
   }
 
-  /// Clear session on logout
-  Future<void> clearSession() async {
+  /// Revoke the server session, then clear local credentials regardless.
+  Future<void> logout() async {
+    if (hasSession) {
+      try {
+        await _client.post('/customers/auth/logout');
+      } catch (_) {
+        // Local logout must still complete if the server cannot be reached.
+      }
+    }
+
     _client.setAuthToken(null);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenPrefKey);
@@ -187,4 +213,3 @@ class AuthApiService {
 }
 
 final authApiService = AuthApiService();
-

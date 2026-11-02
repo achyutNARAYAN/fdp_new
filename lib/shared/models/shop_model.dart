@@ -1,4 +1,5 @@
 enum ShopStatus {
+  unknown(''),
   open('Open Now'),
   busy('Busy • Longer wait'),
   closed('Closed'),
@@ -8,8 +9,9 @@ enum ShopStatus {
   const ShopStatus(this.label);
 
   static ShopStatus fromApi(String? apiStatus, bool isAcceptingOrders) {
+    if (apiStatus == null || apiStatus.isEmpty) return ShopStatus.unknown;
     if (!isAcceptingOrders) return ShopStatus.closed;
-    switch (apiStatus?.toUpperCase()) {
+    switch (apiStatus.toUpperCase()) {
       case 'ACTIVE':
         return ShopStatus.open;
       case 'CLOSED':
@@ -18,7 +20,7 @@ enum ShopStatus {
       case 'DRAFT':
         return ShopStatus.temporarilyUnavailable;
       default:
-        return isAcceptingOrders ? ShopStatus.open : ShopStatus.closed;
+        return ShopStatus.unknown;
     }
   }
 }
@@ -60,15 +62,17 @@ class ShopModel {
     required this.gstin,
     required this.address,
     required this.tags,
-    this.supportsPreOrder = true,
+    this.supportsPreOrder = false,
     this.isSponsored = false,
-    this.isAcceptingOrders = true,
+    this.isAcceptingOrders = false,
     this.coordinates,
   });
 
   bool get isOpen => status == ShopStatus.open && isAcceptingOrders;
   bool get isBusy => status == ShopStatus.busy;
-  bool get isClosed => status == ShopStatus.closed || !isAcceptingOrders;
+  bool get isClosed =>
+      status == ShopStatus.closed ||
+      (status != ShopStatus.unknown && !isAcceptingOrders);
 
   factory ShopModel.fromApiJson(Map<String, dynamic> json) {
     final addressMap = json['address'] as Map<String, dynamic>?;
@@ -78,11 +82,14 @@ class ShopModel {
       final landmark = addressMap['landmark'] ?? '';
       final city = addressMap['city'] ?? '';
       final pin = addressMap['pinCode'] ?? '';
-      formattedAddress = [street, landmark, city, pin]
-          .where((s) => s.toString().trim().isNotEmpty)
-          .join(', ');
+      formattedAddress = [
+        street,
+        landmark,
+        city,
+        pin,
+      ].where((s) => s.toString().trim().isNotEmpty).join(', ');
     } else {
-      formattedAddress = json['address']?.toString() ?? 'Main Market, City';
+      formattedAddress = json['address']?.toString() ?? '';
     }
 
     List<double>? coords;
@@ -90,38 +97,37 @@ class ShopModel {
     if (locationMap != null && locationMap['coordinates'] is List) {
       final list = locationMap['coordinates'] as List;
       if (list.length >= 2) {
-        coords = [
-          (list[0] as num).toDouble(),
-          (list[1] as num).toDouble(),
-        ];
+        coords = [(list[0] as num).toDouble(), (list[1] as num).toDouble()];
       }
     }
 
-    final bool accepting = json['isAcceptingOrders'] ?? true;
-    final String apiStatus = json['status']?.toString() ?? 'ACTIVE';
+    final String? apiStatus = json['status']?.toString();
+    final bool accepting = json['isAcceptingOrders'] is bool
+        ? json['isAcceptingOrders'] as bool
+        : apiStatus?.toUpperCase() == 'ACTIVE';
 
     return ShopModel(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       storeCode: json['storeCode']?.toString() ?? '',
-      name: json['tradeName']?.toString() ?? json['name']?.toString() ?? 'Confectionery Shop',
+      name: json['tradeName']?.toString() ?? json['name']?.toString() ?? '',
       tradeName: json['tradeName']?.toString() ?? '',
-      imageUrl: json['imageUrl']?.toString() ??
-          'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&auto=format&fit=crop&q=80',
-      rating: (json['rating'] as num?)?.toDouble() ?? 4.8,
-      ratingCount: json['ratingCount'] is int ? json['ratingCount'] : 150,
-      distanceKm: (json['serviceRadiusKm'] as num?)?.toDouble() ?? 3.2,
-      prepTimeMinutes: '15-20 min',
+      imageUrl: json['imageUrl']?.toString() ?? '',
+      rating: (json['rating'] as num?)?.toDouble() ?? 0,
+      ratingCount: json['ratingCount'] is int ? json['ratingCount'] : 0,
+      distanceKm: (json['distanceKm'] as num?)?.toDouble() ?? 0,
+      prepTimeMinutes: json['prepTimeMinutes']?.toString() ?? '',
       status: ShopStatus.fromApi(apiStatus, accepting),
       isVerified: json['status'] == 'ACTIVE',
-      fssaiLicense: json['fssaiLicence']?.toString() ?? '10019011000123',
-      gstin: json['taxProfile']?['gstin']?.toString() ?? '29AAAAA0000A1Z5',
+      fssaiLicense: json['fssaiLicence']?.toString() ?? '',
+      gstin: json['taxProfile']?['gstin']?.toString() ?? '',
       address: formattedAddress,
       tags: [
-        json['category']?.toString().replaceAll('_', ' ').toLowerCase() ?? 'sweets',
-        'FSSAI Certified',
-        'Artisanal',
+        if (json['category'] != null)
+          json['category'].toString().replaceAll('_', ' ').toLowerCase(),
       ],
       isAcceptingOrders: accepting,
+      supportsPreOrder: json['supportsPreOrder'] == true,
+      isSponsored: json['isSponsored'] == true,
       coordinates: coords,
     );
   }

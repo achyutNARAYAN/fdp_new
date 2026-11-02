@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/order_provider.dart';
+import '../../providers/cart_provider.dart';
 import '../../models/order_model.dart';
 import 'floating_cart_pill.dart';
 import 'active_order_banner.dart';
@@ -23,7 +24,15 @@ class MainScaffold extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final orderState = ref.watch(orderProvider);
     final hasActionNeeded = orderState.activeOrder?.orderStatus == OrderStatus.changesProposed;
+    final activeOrder = orderState.activeOrder;
+    final hasActiveOrder = (currentIndex == 0 || currentIndex == 2) &&
+        activeOrder != null &&
+        activeOrder.orderStatus != OrderStatus.delivered &&
+        activeOrder.orderStatus != OrderStatus.cancelled &&
+        activeOrder.orderStatus != OrderStatus.declined;
+    final hasCart = !ref.watch(cartProvider).isEmpty;
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final overlayHeight = (hasActiveOrder ? 86.0 : 0.0) + (hasCart ? 68.0 : 0.0);
     final navBarHeight = AppDimensions.heightBottomNav + bottomInset;
 
     return Scaffold(
@@ -33,7 +42,7 @@ class MainScaffold extends ConsumerWidget {
           // Body content with dynamic bottom padding so it doesn't get obscured
           Positioned.fill(
             child: Padding(
-              padding: EdgeInsets.only(bottom: navBarHeight + 16),
+              padding: EdgeInsets.only(bottom: 16 + overlayHeight),
               child: child,
             ),
           ),
@@ -42,7 +51,7 @@ class MainScaffold extends ConsumerWidget {
           Positioned(
             left: 0,
             right: 0,
-            bottom: navBarHeight + 8,
+            bottom: 8,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

@@ -10,22 +10,22 @@ import '../../shared/widgets/badges/order_status_badge.dart';
 import '../../shared/widgets/badges/payment_status_badge.dart';
 import '../../shared/widgets/badges/diet_marker.dart';
 import '../../shared/widgets/buttons/app_secondary_button.dart';
+import '../../shared/widgets/layout/no_order_data.dart';
 
 class OrderDetailsScreen extends ConsumerWidget {
   final String orderId;
 
-  const OrderDetailsScreen({
-    super.key,
-    required this.orderId,
-  });
+  const OrderDetailsScreen({super.key, required this.orderId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderState = ref.watch(orderProvider);
-    final order = orderState.pastOrders.firstWhere(
-      (o) => o.orderId == orderId,
-      orElse: () => orderState.activeOrder ?? orderState.pastOrders.first,
-    );
+    final order =
+        orderState.pastOrders.where((o) => o.orderId == orderId).firstOrNull ??
+        (orderState.activeOrder?.orderId == orderId
+            ? orderState.activeOrder
+            : null);
+    if (order == null) return const NoOrderData();
 
     final bool isCancellable = order.isCancellable;
     final bool hasRefund = order.refundAmount != null;
@@ -36,10 +36,7 @@ class OrderDetailsScreen extends ConsumerWidget {
         title: Text('Order #$orderId'),
         backgroundColor: AppColors.surface,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.share_outlined),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.share_outlined), onPressed: () {}),
         ],
       ),
       body: SingleChildScrollView(
@@ -93,16 +90,23 @@ class OrderDetailsScreen extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.currency_exchange, color: AppColors.primary, size: 28),
+                    const Icon(
+                      Icons.currency_exchange,
+                      color: AppColors.primary,
+                      size: 28,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Refund Processed', style: AppTypography.itemName),
+                          const Text(
+                            'Refund Processed',
+                            style: AppTypography.itemName,
+                          ),
                           const SizedBox(height: 2),
                           Text(
-                            'Amount: ${Formatters.formatCurrency(order.refundAmount!)} • Ref: ${order.refundReference ?? "REF_BANK_882"}',
+                            'Amount: ${Formatters.formatCurrency(order.refundAmount!)} • Ref: ${order.refundReference ?? ""}',
                             style: AppTypography.bodySmall,
                           ),
                         ],
@@ -110,7 +114,13 @@ class OrderDetailsScreen extends ConsumerWidget {
                     ),
                     TextButton(
                       onPressed: () => context.push('/refund-status/$orderId'),
-                      child: const Text('Track', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Track',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -143,16 +153,29 @@ class OrderDetailsScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('${cartItem.quantity}x ${cartItem.item.name}', style: AppTypography.itemName.copyWith(fontSize: 14)),
-                                Text(cartItem.selectedVariant.label, style: AppTypography.caption),
+                                Text(
+                                  '${cartItem.quantity}x ${cartItem.item.name}',
+                                  style: AppTypography.itemName.copyWith(
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  cartItem.selectedVariant.label,
+                                  style: AppTypography.caption,
+                                ),
                                 if (cartItem.cakeMessage != null)
-                                  Text('Cake Message: "${cartItem.cakeMessage}"', style: AppTypography.caption),
+                                  Text(
+                                    'Cake Message: "${cartItem.cakeMessage}"',
+                                    style: AppTypography.caption,
+                                  ),
                               ],
                             ),
                           ),
                           Text(
                             Formatters.formatCurrency(cartItem.totalPrice),
-                            style: AppTypography.itemName.copyWith(fontSize: 14),
+                            style: AppTypography.itemName.copyWith(
+                              fontSize: 14,
+                            ),
                           ),
                         ],
                       ),
@@ -177,21 +200,43 @@ class OrderDetailsScreen extends ConsumerWidget {
                 children: [
                   const Text('Payment Summary', style: AppTypography.itemName),
                   const SizedBox(height: 12),
-                  _billRow('Subtotal', Formatters.formatCurrency(order.subtotal)),
+                  _billRow(
+                    'Subtotal',
+                    Formatters.formatCurrency(order.subtotal),
+                  ),
                   if (order.discountAmount > 0)
-                    _billRow('Discount', '-${Formatters.formatCurrency(order.discountAmount)}', textColor: AppColors.accentPressed),
-                  _billRow('Delivery Fee', Formatters.formatCurrency(order.deliveryFee)),
-                  _billRow('Packaging Fee', Formatters.formatCurrency(order.packagingFee)),
-                  _billRow('Platform Fee', Formatters.formatCurrency(order.platformFee)),
-                  _billRow('Taxes (5% GST)', Formatters.formatCurrency(order.taxes)),
+                    _billRow(
+                      'Discount',
+                      '-${Formatters.formatCurrency(order.discountAmount)}',
+                      textColor: AppColors.accentPressed,
+                    ),
+                  _billRow(
+                    'Delivery Fee',
+                    Formatters.formatCurrency(order.deliveryFee),
+                  ),
+                  _billRow(
+                    'Packaging Fee',
+                    Formatters.formatCurrency(order.packagingFee),
+                  ),
+                  _billRow(
+                    'Platform Fee',
+                    Formatters.formatCurrency(order.platformFee),
+                  ),
+                  _billRow('Taxes', Formatters.formatCurrency(order.taxes)),
                   if (order.tipAmount > 0)
-                    _billRow('Delivery Tip', Formatters.formatCurrency(order.tipAmount)),
+                    _billRow(
+                      'Delivery Tip',
+                      Formatters.formatCurrency(order.tipAmount),
+                    ),
                   const Divider(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Total Amount', style: AppTypography.heading2),
-                      Text(Formatters.formatCurrency(order.totalAmount), style: AppTypography.price.copyWith(fontSize: 20)),
+                      Text(
+                        Formatters.formatCurrency(order.totalAmount),
+                        style: AppTypography.price.copyWith(fontSize: 20),
+                      ),
                     ],
                   ),
                 ],
@@ -216,7 +261,10 @@ class OrderDetailsScreen extends ConsumerWidget {
                   Text(order.deliveryAddress, style: AppTypography.bodySmall),
                   if (order.deliveryInstructions != null) ...[
                     const SizedBox(height: 6),
-                    Text('Instructions: ${order.deliveryInstructions}', style: AppTypography.caption),
+                    Text(
+                      'Instructions: ${order.deliveryInstructions}',
+                      style: AppTypography.caption,
+                    ),
                   ],
                 ],
               ),
