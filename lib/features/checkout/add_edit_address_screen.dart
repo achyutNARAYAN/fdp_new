@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/services/geocoding_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
@@ -11,6 +14,7 @@ import '../../shared/providers/auth_provider.dart';
 import '../../shared/providers/location_provider.dart';
 import '../../shared/widgets/inputs/app_text_field.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
+import '../../shared/widgets/location_map.dart';
 
 class AddEditAddressScreen extends ConsumerStatefulWidget {
   final AddressModel? existingAddress;
@@ -23,6 +27,7 @@ class AddEditAddressScreen extends ConsumerStatefulWidget {
 }
 
 class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
+  final TextEditingController _searchController = TextEditingController();
   late TextEditingController _flatController;
   late TextEditingController _streetController;
   late TextEditingController _landmarkController;
@@ -35,6 +40,9 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   LatLng? _coordinates;
   AddressType _addressType = AddressType.home;
   bool _isDefault = false;
+  bool _isSearching = false;
+  List<GeocodingResult> _searchResults = [];
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -62,6 +70,8 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
     _flatController.dispose();
     _streetController.dispose();
     _landmarkController.dispose();
@@ -143,28 +153,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
       setState(() {
         _coordinates = ref.read(locationProvider).currentCoordinates;
         if (placemark != null) {
-          _setIfAvailable(_flatController, placemark.subThoroughfare);
-          _setIfAvailable(
-            _streetController,
-            _firstAvailable([
-              placemark.thoroughfare,
-              placemark.subLocality,
-              placemark.subAdministrativeArea,
-            ]),
-          );
-          _setIfAvailable(
-            _landmarkController,
-            placemark.name == placemark.thoroughfare ? null : placemark.name,
-          );
-          _setIfAvailable(
-            _cityController,
-            _firstAvailable([
-              placemark.locality,
-              placemark.subAdministrativeArea,
-            ]),
-          );
-          _setIfAvailable(_stateController, placemark.administrativeArea);
-          _setIfAvailable(_pinController, placemark.postalCode);
+          _applyGeocodingResult(placemark);
         }
       });
       if (placemark == null) {
@@ -184,6 +173,71 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
         ),
       );
     }
+  }
+
+  void _scheduleAddressSearch() {
+    if (_searchController.text.trim().isEmpty || _isSearching) return;
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), _searchAddress);
+  }
+
+  Future<void> _searchAddress() async {
+    final query = _searchController.text.trim();
+    if (query.isEmpty || _isSearching || !mounted) return;
+    setState(() {
+      _isSearching = true;
+      _searchResults = [];
+    });
+    try {
+      final results = await GeocodingService.searchAddress(query);
+      if (!mounted) return;
+      setState(() => _searchResults = results);
+      if (results.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No address results found.')),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Address search failed: $error')));
+    } finally {
+      if (mounted) setState(() => _isSearching = false);
+    }
+  }
+
+  void _applyGeocodingResult(GeocodingResult result) {
+    final address = result.address;
+    _coordinates = LatLng(result.latitude, result.longitude);
+    _setIfAvailable(_flatController, address['house_number']?.toString());
+    _setIfAvailable(
+      _streetController,
+      _firstAvailable([
+        address['road']?.toString(),
+        address['pedestrian']?.toString(),
+        address['neighbourhood']?.toString(),
+        address['suburb']?.toString(),
+      ]),
+    );
+    _setIfAvailable(
+      _landmarkController,
+      _firstAvailable([
+        address['amenity']?.toString(),
+        address['suburb']?.toString(),
+      ]),
+    );
+    _setIfAvailable(
+      _cityController,
+      _firstAvailable([
+        address['city']?.toString(),
+        address['town']?.toString(),
+        address['village']?.toString(),
+        address['municipality']?.toString(),
+      ]),
+    );
+    _setIfAvailable(_stateController, address['state']?.toString());
+    _setIfAvailable(_pinController, address['postcode']?.toString());
   }
 
   String? _firstAvailable(List<String?> values) => values
@@ -213,30 +267,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  // Collapsed 30% map pin preview
-                  Container(
-                    height: 140,
-                    color: const Color(0xFFE8ECE9),
-                    alignment: Alignment.center,
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.location_on,
-                          size: 36,
-                          color: AppColors.accent,
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Set delivery location using your phone GPS',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  LocationMap(center: _coordinates, height: 220),
 
                   // Form Fields
                   Padding(
@@ -244,6 +275,51 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        TextField(
+                          controller: _searchController,
+                          textInputAction: TextInputAction.search,
+                          onSubmitted: (_) => _scheduleAddressSearch(),
+                          decoration: InputDecoration(
+                            labelText: 'Search address or area',
+                            suffixIcon: IconButton(
+                              onPressed: _isSearching
+                                  ? null
+                                  : _scheduleAddressSearch,
+                              icon: _isSearching
+                                  ? const SizedBox.square(
+                                      dimension: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.search),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Location lookup is sent to OpenStreetMap. © OpenStreetMap contributors.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        if (_searchResults.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          ..._searchResults.map(
+                            (result) => ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.place_outlined),
+                              title: Text(result.displayName),
+                              onTap: () => setState(() {
+                                _applyGeocodingResult(result);
+                                _searchResults = [];
+                              }),
+                            ),
+                          ),
+                          const Divider(),
+                        ],
+                        const SizedBox(height: 16),
                         // Address Type Selector (Home, Work, Other)
                         const Text(
                           'Save Address As',

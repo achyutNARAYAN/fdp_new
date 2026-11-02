@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/services.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import '../../core/services/geocoding_service.dart';
 import '../models/address_model.dart';
 
 class LocationState {
@@ -47,7 +46,7 @@ class LocationNotifier extends StateNotifier<LocationState> {
     );
   }
 
-  Future<Placemark?> useCurrentLocation() async {
+  Future<GeocodingResult?> useCurrentLocation() async {
     state = state.copyWith(isLoadingLocation: true);
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
@@ -76,21 +75,9 @@ class LocationNotifier extends StateNotifier<LocationState> {
           coordinates: coordinates,
         ),
       );
-      final List<Placemark> placemarks;
-      try {
-        placemarks = await placemarkFromCoordinates(
-          position.latitude,
-          position.longitude,
-        );
-      } on MissingPluginException {
-        rethrow;
-      } on PlatformException {
-        return null;
-      }
-      return placemarks.isEmpty ? null : placemarks.first;
-    } on MissingPluginException {
-      throw StateError(
-        'Location support needs a full app restart. Stop the app and run it again.',
+      return GeocodingService.reverseGeocode(
+        position.latitude,
+        position.longitude,
       );
     } finally {
       state = state.copyWith(isLoadingLocation: false);

@@ -6,6 +6,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../shared/providers/location_provider.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
+import '../../shared/widgets/location_map.dart';
 
 class DeliveryLocationScreen extends ConsumerStatefulWidget {
   const DeliveryLocationScreen({super.key});
@@ -28,13 +29,7 @@ class _DeliveryLocationScreenState
       if (!mounted) return;
       setState(() {
         _error = null;
-        _address = [
-          placemark?.name,
-          placemark?.subLocality,
-          placemark?.locality,
-          placemark?.administrativeArea,
-          placemark?.postalCode,
-        ].whereType<String>().where((value) => value.isNotEmpty).join(', ');
+        _address = placemark?.displayName ?? '';
       });
     } catch (error) {
       if (!mounted) return;
@@ -50,14 +45,14 @@ class _DeliveryLocationScreenState
       appBar: AppBar(title: const Text('Set Delivery Location')),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.p24),
+          padding: const EdgeInsets.all(AppDimensions.p16),
           child: Column(
             children: [
-              const Spacer(),
-              const Icon(
-                Icons.location_on_outlined,
-                size: 56,
-                color: AppColors.accent,
+              LocationMap(
+                center:
+                    location.currentCoordinates ??
+                    location.selectedAddress?.coordinates,
+                height: 380,
               ),
               const SizedBox(height: 16),
               Text(
@@ -74,12 +69,14 @@ class _DeliveryLocationScreenState
                   ),
                 ),
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               TextButton(
                 onPressed: location.isLoadingLocation
                     ? null
                     : _useCurrentLocation,
-                child: const Text('Use current location'),
+                child: location.isLoadingLocation
+                    ? const CircularProgressIndicator()
+                    : const Text('Use current location'),
               ),
               const Spacer(),
               AppPrimaryButton(
