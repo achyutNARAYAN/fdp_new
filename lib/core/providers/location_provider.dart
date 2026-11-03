@@ -98,3 +98,4 @@ final locationProvider = StateNotifierProvider<LocationNotifier, LocationState>(
     return LocationNotifier();
   },
 );
+

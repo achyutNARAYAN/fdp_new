@@ -10,3 +10,4 @@ final userProfileProvider = Provider<UserModel?>((ref) {
 final savedAddressesFutureProvider = FutureProvider((ref) async {
   return await profileRepository.getSavedAddresses();
 });
+

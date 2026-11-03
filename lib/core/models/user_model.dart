@@ -84,3 +84,4 @@ class UserModel {
     return {'name': fullName, 'phone': mobileNumber};
   }
 }
+

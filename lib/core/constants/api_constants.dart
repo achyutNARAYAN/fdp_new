@@ -27,3 +27,4 @@ class ApiConstants {
   static const String catalog = '/catalog';
   static const String stores = '/stores';
 }
+

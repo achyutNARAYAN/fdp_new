@@ -21,3 +21,4 @@ class AppConstants {
   // Assets
   static const String logoAsset = 'assets/branding/mishraji_logo.png';
 }
+

@@ -28,3 +28,4 @@ class MithaiApp extends ConsumerWidget {
     );
   }
 }
+

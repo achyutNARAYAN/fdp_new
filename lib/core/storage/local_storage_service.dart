@@ -33,3 +33,4 @@ class LocalStorageService {
     return await _prefs!.remove(key);
   }
 }
+
