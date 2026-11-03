@@ -12,6 +12,8 @@ class PaymentResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isSuccess = status.toLowerCase() == 'success';
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -20,26 +22,28 @@ class PaymentResultScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.info_outline,
-                size: 64,
-                color: AppColors.neutral,
+              Icon(
+                isSuccess ? Icons.check_circle_outline : Icons.error_outline,
+                size: 72,
+                color: isSuccess ? AppColors.primary : AppColors.accent,
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Payment status unavailable',
+              Text(
+                isSuccess ? 'Payment Successful!' : 'Payment Failed',
                 style: AppTypography.heading1,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'The app has no payment API response to confirm this transaction.',
+              Text(
+                isSuccess
+                    ? 'Your payment was verified via Razorpay.'
+                    : 'The payment could not be completed. You can try again or choose Cash on Delivery.',
                 style: AppTypography.bodySmall,
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               AppPrimaryButton(
-                label: 'Back to cart',
-                onPressed: () => context.go('/cart'),
+                label: isSuccess ? 'View Active Orders' : 'Retry Payment in Checkout',
+                onPressed: () => context.go(isSuccess ? '/orders' : '/checkout'),
               ),
             ],
           ),

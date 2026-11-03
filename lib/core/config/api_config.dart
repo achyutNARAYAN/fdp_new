@@ -8,7 +8,7 @@ class ApiConfig {
   static const String rootUrl = 'https://fdp-tkl0.onrender.com';
 
   /// Local Development Fallback
-  static const String localBaseUrl = 'http://localhost:5000/api/v1';
+  static const String localBaseUrl = 'http://localhost:4000/api/v1';
 
   /// Network Timeout (Render cold starts can take up to 45s)
   static const Duration timeout = Duration(seconds: 45);
@@ -17,6 +17,10 @@ class ApiConfig {
   /// If provided, Android Google Play Services returns an OpenID idToken for the backend
   static const String googleServerClientId =
       '251374570662-1doulus75vv493d0o572e8vkndjdbtc0.apps.googleusercontent.com';
+
+  /// Razorpay Payment Gateway Credentials (Test Mode)
+  static const String razorpayKeyId = 'rzp_test_Tvfe16OIBHNqTe';
+  static const String razorpayKeySecret = 'UgfQVDafBzDpBGzSAYFAJvga';
 
   /// Enable full API request/response logging in terminal
   static bool enableLogging = true;

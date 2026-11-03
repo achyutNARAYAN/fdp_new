@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -143,7 +144,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         setState(() => _isGoogleLoading = false);
         final errStr = e.toString();
-        if (errStr.contains('10') || errStr.contains('ApiException')) {
+        if (defaultTargetPlatform == TargetPlatform.android &&
+            (errStr.contains('10') || errStr.contains('ApiException'))) {
           _showGoogleSetupDialog(
             context,
             'Google Cloud Setup Needed',
@@ -156,9 +158,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 'Check that the app package name and signing SHA-1 are registered in Google Cloud Console, and that this Web Client ID is configured as the backend audience.',
           );
         } else {
+          final message = defaultTargetPlatform == TargetPlatform.iOS
+              ? 'Google Sign-In: $errStr\nCheck the iOS client ID and reversed client ID URL scheme in Google Cloud and Xcode.'
+              : 'Google Sign-In: $errStr';
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text('Google Sign-In: $errStr')));
+          ).showSnackBar(SnackBar(content: Text(message)));
         }
       }
     }
@@ -187,26 +192,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryTint20,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: AppColors.primary,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.cake_outlined,
-                              size: 44,
-                              color: AppColors.accent,
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: Image.asset(
+                              'assets/branding/mishraji_logo.png',
+                              width: 160,
+                              height: 160,
+                              fit: BoxFit.cover,
                             ),
                           ),
                           const SizedBox(height: 16),
                           const Text(
-                            'Welcome to Mithai & More',
+                            'Welcome to Mishra Ji',
                             style: AppTypography.heading1,
                             textAlign: TextAlign.center,
                           ),
@@ -284,8 +281,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                     onChanged: (val) {
-                                      if (_emailError != null)
+                                      if (_emailError != null) {
                                         setState(() => _emailError = null);
+                                      }
                                     },
                                     decoration: const InputDecoration(
                                       hintText: 'your@email.com',

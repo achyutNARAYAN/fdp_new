@@ -65,6 +65,7 @@ class StoreApiService {
           .map(
             (e) => ItemModel.fromStoreMenuItemApi(
               e as Map<String, dynamic>,
+              storeId: storeIdOrCode,
               storeName: storeName,
             ),
           )

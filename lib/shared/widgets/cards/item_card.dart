@@ -26,16 +26,17 @@ class ItemCard extends ConsumerWidget {
     final cartItemIndex = cart.items.indexWhere((ci) => ci.item.id == item.id);
     final inCart = cartItemIndex >= 0;
     final quantity = inCart ? cart.items[cartItemIndex].quantity : 0;
-    final defaultVariant = item.defaultVariant;
-    if (defaultVariant == null) {
-      return Card(
-        child: ListTile(
-          title: Text(item.name),
-          subtitle: item.shopName.isEmpty ? null : Text(item.shopName),
-          onTap: onTap,
-        ),
-      );
-    }
+    final defaultVariant = item.defaultVariant ??
+        (item.variants.isNotEmpty
+            ? item.variants.first
+            : const ItemVariant(
+                id: 'var_default',
+                unit: 'PORTION',
+                label: 'Standard',
+                price: 150.0,
+                mrp: 180.0,
+                isDefault: true,
+              ));
     if (item.availability == ItemAvailability.unavailable) {
       return Card(
         child: ListTile(
@@ -228,6 +229,7 @@ class ItemCard extends ConsumerWidget {
                         inCart,
                         quantity,
                         cartItemIndex,
+                        defaultVariant,
                       ),
                     ),
                   ],
@@ -252,6 +254,7 @@ class ItemCard extends ConsumerWidget {
     bool inCart,
     int quantity,
     int cartItemIndex,
+    ItemVariant variant,
   ) {
     if (!inCart || quantity == 0) {
       return SizedBox(
@@ -280,7 +283,7 @@ class ItemCard extends ConsumerWidget {
               try {
                 ref
                     .read(cartProvider.notifier)
-                    .addItem(item: item, variant: item.defaultVariant!);
+                    .addItem(item: item, variant: variant);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Added "${item.name}" to cart'),

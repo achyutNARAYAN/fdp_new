@@ -38,6 +38,8 @@ class CartItemModel {
   double get totalPrice => unitPrice * quantity;
 
   CartItemModel copyWith({
+    String? id,
+    ItemModel? item,
     int? quantity,
     ItemVariant? selectedVariant,
     bool? isEggless,
@@ -49,8 +51,8 @@ class CartItemModel {
     bool? isAvailable,
   }) {
     return CartItemModel(
-      id: id,
-      item: item,
+      id: id ?? this.id,
+      item: item ?? this.item,
       selectedVariant: selectedVariant ?? this.selectedVariant,
       quantity: quantity ?? this.quantity,
       isEggless: isEggless ?? this.isEggless,

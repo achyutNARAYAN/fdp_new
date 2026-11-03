@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
+import '../../shared/providers/auth_provider.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
 
 enum SplashState {
@@ -39,12 +40,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   void _initApp() async {
-    await Future.delayed(const Duration(milliseconds: 1800));
-    if (mounted) {
-      // Auth session restoration is handled by authProvider on startup
-      // Router will redirect based on auth status after splash
-      context.go('/login');
-    }
+    await ref.read(authProvider.notifier).initialization;
+    if (!mounted) return;
+    final isAuthenticated =
+        ref.read(authProvider).status == AuthStatus.authenticated;
+    context.go(isAuthenticated ? '/home' : '/login');
   }
 
   @override
@@ -66,33 +66,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             children: [
               const Spacer(),
 
-              // 88px Rounded Square Sage Green Logo Mark
               Center(
-                child: Container(
-                  width: 88,
-                  height: 88,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: AppDimensions.elevationLevel2,
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.bakery_dining_rounded,
-                    size: 48,
-                    color: AppColors.onPrimary,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Image.asset(
+                    'assets/branding/mishraji_logo.png',
+                    width: 280,
+                    height: 280,
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // Wordmark & Tagline
-              const Text(
-                'MishraJi Champran Wale',
-                style: AppTypography.display,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 20),
               const Text(
                 'Sweet moments, delivered with care.',
                 style: AppTypography.bodySmall,

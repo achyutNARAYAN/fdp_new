@@ -13,11 +13,13 @@ class OrderTrackingScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final order = ref
-        .watch(orderProvider)
-        .pastOrders
-        .where((order) => order.orderId == orderId)
-        .firstOrNull;
+    final orderState = ref.watch(orderProvider);
+    final order = (orderState.activeOrder?.orderId == orderId
+            ? orderState.activeOrder
+            : orderState.pastOrders
+                .where((order) => order.orderId == orderId)
+                .firstOrNull) ??
+        orderState.activeOrder;
 
     return Scaffold(
       backgroundColor: AppColors.background,

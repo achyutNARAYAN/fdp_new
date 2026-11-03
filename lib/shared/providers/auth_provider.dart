@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_model.dart';
 import '../../core/services/auth_api_service.dart';
 import '../../core/services/customer_api_service.dart';
+import '../../core/network/api_exception.dart';
 
 enum AuthStatus {
+  restoringSession,
   unauthenticated,
   otpSent,
   authenticating,
@@ -61,27 +63,53 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthApiService _authService;
   final CustomerApiService _customerService;
+  late final Future<void> initialization;
 
   AuthNotifier({
     AuthApiService? authService,
     CustomerApiService? customerService,
   }) : _authService = authService ?? authApiService,
        _customerService = customerService ?? customerApiService,
-       super(const AuthState()) {
-    _restoreSavedSession();
+       super(const AuthState(status: AuthStatus.restoringSession)) {
+    initialization = _restoreSavedSession();
   }
 
   Future<void> _restoreSavedSession() async {
     try {
       final savedUser = await _authService.restoreSession();
-      if (_authService.hasSession) {
-        state = state.copyWith(
-          status: AuthStatus.authenticated,
-          user: savedUser,
-          identifier: savedUser?.email ?? savedUser?.mobileNumber,
-        );
+      if (!_authService.hasSession) {
+        state = const AuthState(status: AuthStatus.unauthenticated);
+        return;
       }
-    } catch (_) {}
+
+      try {
+        final user = await _customerService.getProfile();
+        await _authService.saveSession(
+          token: _authService.currentToken!,
+          user: user,
+        );
+        _setRestoredSession(user);
+      } on ApiException catch (error) {
+        if (error.statusCode == 401 || error.statusCode == 403) {
+          await _authService.clearSession();
+          state = const AuthState(status: AuthStatus.unauthenticated);
+        } else {
+          _setRestoredSession(savedUser);
+        }
+      } catch (_) {
+        _setRestoredSession(savedUser);
+      }
+    } catch (_) {
+      state = const AuthState(status: AuthStatus.unauthenticated);
+    }
+  }
+
+  void _setRestoredSession(UserModel? user) {
+    state = AuthState(
+      status: AuthStatus.authenticated,
+      user: user,
+      identifier: user?.email ?? user?.mobileNumber,
+    );
   }
 
   Future<bool> sendOtp(String email) async {
@@ -147,7 +175,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
         return true;
       }
-    } catch (e) {
+    } on ApiException catch (e) {
+      if (e.statusCode != 400 && e.statusCode != 401 && e.statusCode != 422) {
+        state = state.copyWith(
+          status: AuthStatus.otpSent,
+          errorMessage: e.message,
+        );
+        return false;
+      }
       final remaining = state.remainingOtpAttempts - 1;
       state = state.copyWith(
         status: AuthStatus.otpSent,
@@ -155,6 +190,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
             ? "That code isn't right. $remaining attempts left."
             : 'Too many incorrect attempts. Please request a new OTP.',
         remainingOtpAttempts: remaining > 0 ? remaining : 0,
+      );
+      return false;
+    } catch (error) {
+      state = state.copyWith(
+        status: AuthStatus.otpSent,
+        errorMessage:
+            'Sign-in could not be completed (${error.runtimeType}). Fully rebuild the app and try again.',
       );
       return false;
     }
@@ -255,12 +297,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    await _authService.logout();
-    state = const AuthState(
-      status: AuthStatus.unauthenticated,
-      user: null,
-      identifier: null,
-    );
+    try {
+      await _authService.logout();
+    } finally {
+      state = const AuthState(status: AuthStatus.unauthenticated);
+    }
   }
 }
 

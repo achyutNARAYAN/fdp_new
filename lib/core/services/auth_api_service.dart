@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../network/api_client.dart';
 import '../../shared/models/user_model.dart';
@@ -23,10 +24,12 @@ class AuthApiService {
   final ApiClient _client;
   static const String _tokenPrefKey = 'fdp_jwt_token';
   static const String _userPrefKey = 'fdp_user_profile';
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   AuthApiService({ApiClient? client}) : _client = client ?? globalApiClient;
 
   bool get hasSession => _client.authToken?.isNotEmpty == true;
+  String? get currentToken => _client.authToken;
 
   /// Request 6-digit OTP to customer email address
   Future<Map<String, dynamic>> requestOtp(String email) async {
@@ -119,15 +122,13 @@ class AuthApiService {
     return user;
   }
 
-  /// Persist session in SharedPreferences and update ApiClient
+  /// Persist credentials securely and update ApiClient.
   Future<void> saveSession({required String token, UserModel? user}) async {
-    _client.setAuthToken(token);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenPrefKey, token);
+    await _secureStorage.write(key: _tokenPrefKey, value: token);
     if (user != null) {
-      await prefs.setString(
-        _userPrefKey,
-        jsonEncode({
+      await _secureStorage.write(
+        key: _userPrefKey,
+        value: jsonEncode({
           '_id': user.id,
           'customerId': user.customerId,
           'name': user.fullName,
@@ -138,15 +139,30 @@ class AuthApiService {
         }),
       );
     }
+    _client.setAuthToken(token);
   }
 
   /// Restore saved session on app launch
   Future<UserModel?> restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenPrefKey);
+    var token = await _secureStorage.read(key: _tokenPrefKey);
+    if (token == null || token.isEmpty) {
+      token = prefs.getString(_tokenPrefKey);
+      if (token != null && token.isNotEmpty) {
+        await _secureStorage.write(key: _tokenPrefKey, value: token);
+        await prefs.remove(_tokenPrefKey);
+      }
+    }
     if (token != null && token.isNotEmpty) {
       _client.setAuthToken(token);
-      final userJsonStr = prefs.getString(_userPrefKey);
+      var userJsonStr = await _secureStorage.read(key: _userPrefKey);
+      if (userJsonStr == null) {
+        userJsonStr = prefs.getString(_userPrefKey);
+        if (userJsonStr != null) {
+          await _secureStorage.write(key: _userPrefKey, value: userJsonStr);
+          await prefs.remove(_userPrefKey);
+        }
+      }
       if (userJsonStr != null) {
         try {
           final decoded = jsonDecode(userJsonStr) as Map<String, dynamic>;
@@ -205,10 +221,16 @@ class AuthApiService {
       }
     }
 
+    await clearSession();
+  }
+
+  Future<void> clearSession() async {
     _client.setAuthToken(null);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenPrefKey);
     await prefs.remove(_userPrefKey);
+    await _secureStorage.delete(key: _tokenPrefKey);
+    await _secureStorage.delete(key: _userPrefKey);
   }
 }
 

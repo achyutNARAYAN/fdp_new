@@ -49,6 +49,8 @@ import '../../features/support/raise_ticket_screen.dart';
 import '../../features/support/ticket_details_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../shared/widgets/layout/main_scaffold.dart';
+import '../../shared/models/address_model.dart';
+import '../../shared/models/item_model.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey =
@@ -56,7 +58,7 @@ final GlobalKey<NavigatorState> _shellNavigatorKey =
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/login',
+  initialLocation: '/',
   routes: [
     // Screen 1: Splash
     GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
@@ -161,7 +163,10 @@ final GoRouter appRouter = GoRouter(
       path: '/item/:id',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
-        return ItemDetailsScreen(itemId: id);
+        return ItemDetailsScreen(
+          itemId: id,
+          initialItem: state.extra as ItemModel?,
+        );
       },
     ),
 
@@ -183,7 +188,8 @@ final GoRouter appRouter = GoRouter(
     // Screen 17: Add / Edit Address
     GoRoute(
       path: '/add-address',
-      builder: (context, state) => const AddEditAddressScreen(),
+      builder: (context, state) =>
+          AddEditAddressScreen(initialAddress: state.extra as AddressModel?),
     ),
 
     // Screen 18: Offers & Coupons

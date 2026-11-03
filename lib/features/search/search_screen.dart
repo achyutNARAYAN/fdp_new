@@ -32,12 +32,19 @@ class _SearchScreenState extends State<SearchScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/home'),
+        ),
         titleSpacing: 0,
         title: Padding(
           padding: const EdgeInsets.only(right: 16),
           child: TextField(
             controller: _searchController,
             autofocus: true,
+            cursorColor: AppColors.primary,
             textInputAction: TextInputAction.search,
             onSubmitted: _performSearch,
             style: AppTypography.body,

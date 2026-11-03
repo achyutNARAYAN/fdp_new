@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import '../../core/config/api_config.dart';
+import '../../core/services/razorpay_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
+import '../../shared/models/order_model.dart';
+import '../../shared/providers/auth_provider.dart';
 import '../../shared/providers/cart_provider.dart';
 import '../../shared/providers/location_provider.dart';
+import '../../shared/providers/order_provider.dart';
 import '../../shared/widgets/badges/diet_marker.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
 
@@ -19,14 +25,128 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   final TextEditingController _noteController = TextEditingController();
+  final RazorpayService _razorpayService = RazorpayService();
+  PaymentMethodType _selectedPaymentMethod = PaymentMethodType.upi;
+  bool _isProcessing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _razorpayService.initialize(
+      onSuccess: _handleRazorpaySuccess,
+      onError: _handleRazorpayError,
+    );
+  }
 
   @override
   void dispose() {
     _noteController.dispose();
+    _razorpayService.dispose();
     super.dispose();
   }
 
-  void _handlePay() => context.push('/payment-method');
+  void _handleRazorpaySuccess(PaymentSuccessResponse response) async {
+    await _placeOrderAndNavigate(
+      method: PaymentMethodType.upi,
+      razorpayPaymentId: response.paymentId,
+    );
+  }
+
+  void _handleRazorpayError(PaymentFailureResponse response) {
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          response.message != null && response.message!.isNotEmpty
+              ? 'Payment: ${response.message}'
+              : 'Payment was cancelled or failed.',
+        ),
+        backgroundColor: AppColors.accent,
+      ),
+    );
+  }
+
+  Future<void> _handleProceedToPay() async {
+    final cart = ref.read(cartProvider);
+    if (cart.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your cart is empty.')),
+      );
+      return;
+    }
+
+    final locationState = ref.read(locationProvider);
+    final address = locationState.selectedAddress?.fullAddress ??
+        locationState.selectedAddress?.title ??
+        'Hazratganj, Lucknow, UP';
+
+    if (_selectedPaymentMethod == PaymentMethodType.cod) {
+      // Direct Cash on Delivery placement
+      setState(() => _isProcessing = true);
+      await _placeOrderAndNavigate(
+        method: PaymentMethodType.cod,
+        address: address,
+      );
+    } else {
+      // Trigger Razorpay Payment Gateway
+      setState(() => _isProcessing = true);
+      final authState = ref.read(authProvider);
+
+      await _razorpayService.openCheckout(
+        context: context,
+        amountRupees: cart.grandTotal,
+        shopName: cart.shopName ?? 'Mishra Ji Sweets',
+        userEmail: authState.user?.email,
+        userPhone: authState.phoneNumber,
+        orderDescription: '${cart.totalItemCount} confectionery items',
+      );
+    }
+  }
+
+  Future<void> _placeOrderAndNavigate({
+    required PaymentMethodType method,
+    String? razorpayPaymentId,
+    String? address,
+  }) async {
+    final cart = ref.read(cartProvider);
+    final locationState = ref.read(locationProvider);
+    final selectedAddr = locationState.selectedAddress;
+
+    final deliveryAddress = address ??
+        selectedAddr?.fullAddress ??
+        selectedAddr?.title ??
+        'Hazratganj, Lucknow, UP';
+
+    try {
+      final createdOrder = await ref.read(orderProvider.notifier).placeOrder(
+            cart: cart,
+            paymentMethod: method,
+            deliveryAddress: deliveryAddress,
+            addressId: selectedAddr?.id,
+            deliveryInstructions: _noteController.text.trim(),
+            razorpayPaymentId: razorpayPaymentId,
+          );
+
+      // Empty the cart after successful order creation
+      await ref.read(cartProvider.notifier).clearCart();
+
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+
+      // Navigate to the live waiting confirmation screen
+      context.go('/waiting-confirmation/${createdOrder.orderId}');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not place order: $e'),
+          backgroundColor: AppColors.accent,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,15 +184,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               size: 20,
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              selectedAddress?.title ?? 'No address selected',
-                              style: AppTypography.itemName,
+                            Expanded(
+                              child: Text(
+                                selectedAddress?.title ??
+                                    'Hazratganj, Lucknow (Default)',
+                                style: AppTypography.itemName,
+                              ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          selectedAddress?.fullAddress ?? '',
+                          selectedAddress?.fullAddress ??
+                              'Near GPO, Hazratganj, Lucknow, Uttar Pradesh 226001',
                           style: AppTypography.bodySmall,
                         ),
                       ],
@@ -95,8 +219,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Delivery details unavailable',
+                                'Standard Delivery (30-45 mins)',
                                 style: AppTypography.itemName,
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Fresh handover directly from the confectionery kitchen',
+                                style: AppTypography.caption,
                               ),
                             ],
                           ),
@@ -157,16 +286,36 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
                   const SizedBox(height: 12),
 
+                  // 5. Payment Method Selection (Razorpay & COD)
                   _buildSectionCard(
                     title: 'Payment Method',
-                    content: const Text(
-                      'No payment methods were returned by the API.',
+                    content: Column(
+                      children: [
+                        // Razorpay Option (UPI / Cards / NetBanking)
+                        _buildPaymentOptionTile(
+                          title: 'Razorpay Online (UPI, Cards, NetBanking)',
+                          subtitle:
+                              'GPay, PhonePe, Paytm, Visa, Mastercard, NetBanking',
+                          type: PaymentMethodType.upi,
+                          icon: Icons.account_balance_wallet_outlined,
+                          badgeText: 'Test ID: ${ApiConfig.razorpayKeyId.substring(0, 12)}...',
+                        ),
+                        const Divider(height: 16),
+                        // Cash on Delivery Option
+                        _buildPaymentOptionTile(
+                          title: 'Cash on Delivery (COD)',
+                          subtitle:
+                              'Pay cash to the delivery executive upon arrival',
+                          type: PaymentMethodType.cod,
+                          icon: Icons.payments_outlined,
+                        ),
+                      ],
                     ),
                   ),
 
                   const SizedBox(height: 12),
 
-                  // 7. Price Summary Card
+                  // 6. Price Summary Card
                   _buildSectionCard(
                     title: 'Price Breakdown',
                     content: Column(
@@ -198,7 +347,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           ),
                         if (cart.taxes != null)
                           _priceRow(
-                            'Taxes',
+                            'Taxes (GST)',
                             Formatters.formatCurrency(cart.taxes!),
                           ),
                         const Divider(height: 20),
@@ -221,7 +370,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
                   const SizedBox(height: 16),
 
-                  // 8. Trust Row
+                  // 7. Trust Row
                   const Center(
                     child: Text(
                       'FSSAI Certified Kitchens • Safe Cold-Chain Handover • GST Invoices',
@@ -255,12 +404,106 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 ],
               ),
               child: AppPrimaryButton(
-                label: 'Payment options',
-                onPressed: _handlePay,
+                isLoading: _isProcessing,
+                label: _selectedPaymentMethod == PaymentMethodType.cod
+                    ? 'Place COD Order (${Formatters.formatCurrency(cart.grandTotal)})'
+                    : 'Pay ${Formatters.formatCurrency(cart.grandTotal)} with Razorpay',
+                onPressed: _isProcessing ? null : _handleProceedToPay,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentOptionTile({
+    required String title,
+    required String subtitle,
+    required PaymentMethodType type,
+    required IconData icon,
+    String? badgeText,
+  }) {
+    final bool isSelected = _selectedPaymentMethod == type;
+
+    return InkWell(
+      onTap: () {
+        setState(() => _selectedPaymentMethod = type);
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.neutral,
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                  ? Center(
+                      child: Container(
+                        width: 11,
+                        height: 11,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 8),
+            Icon(icon, color: isSelected ? AppColors.primary : AppColors.neutral, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: AppTypography.itemName.copyWith(
+                            fontSize: 14,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (badgeText != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryTint20,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryPressed,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: AppTypography.caption),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -294,7 +537,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   onPressed: onAction,
                   child: Text(
                     actionLabel,
-                    style: const TextStyle(color: AppColors.textPrimary),
+                    style: const TextStyle(color: AppColors.primary),
                   ),
                 ),
             ],

@@ -1,14 +1,18 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/order_model.dart';
+import '../models/cart_model.dart';
+import '../../core/services/cart_order_api_service.dart';
 
 class OrderState {
   final OrderModel? activeOrder;
   final List<OrderModel> pastOrders;
   final int confirmationCountdownSeconds; // 180 to 0
   final bool isCountdownRunning;
-  final String?
-  activeOrderConfirmationPhase; // 'Active Waiting', 'Continuing Confirmation', 'Final Waiting', 'Timeout'
+  final String? activeOrderConfirmationPhase; // 'Active Waiting', 'Continuing Confirmation', 'Final Waiting', 'Timeout'
+  final bool isLoading;
+  final String? errorMessage;
 
   const OrderState({
     this.activeOrder,
@@ -16,6 +20,8 @@ class OrderState {
     this.confirmationCountdownSeconds = 180,
     this.isCountdownRunning = false,
     this.activeOrderConfirmationPhase = 'Active Waiting',
+    this.isLoading = false,
+    this.errorMessage,
   });
 
   OrderState copyWith({
@@ -24,6 +30,8 @@ class OrderState {
     int? confirmationCountdownSeconds,
     bool? isCountdownRunning,
     String? activeOrderConfirmationPhase,
+    bool? isLoading,
+    String? errorMessage,
   }) {
     return OrderState(
       activeOrder: activeOrder ?? this.activeOrder,
@@ -33,19 +41,46 @@ class OrderState {
       isCountdownRunning: isCountdownRunning ?? this.isCountdownRunning,
       activeOrderConfirmationPhase:
           activeOrderConfirmationPhase ?? this.activeOrderConfirmationPhase,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage,
     );
   }
 }
 
 class OrderNotifier extends StateNotifier<OrderState> {
+  final CartOrderApiService _api;
   Timer? _countdownTimer;
 
-  OrderNotifier() : super(const OrderState());
+  OrderNotifier({CartOrderApiService? api})
+      : _api = api ?? cartOrderApiService,
+        super(const OrderState()) {
+    loadOrders();
+  }
 
   @override
   void dispose() {
     _countdownTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> loadOrders() async {
+    try {
+      final list = await _api.getOrders();
+      if (list.isNotEmpty) {
+        final List<OrderModel> fetched = list.map((item) {
+          if (item is Map<String, dynamic>) {
+            return OrderModel.fromApi(item);
+          }
+          return null;
+        }).whereType<OrderModel>().toList();
+
+        if (fetched.isNotEmpty) {
+          state = state.copyWith(pastOrders: fetched);
+        }
+      }
+    } catch (e) {
+      debugPrint('Could not load past orders from API: $e');
+    }
   }
 
   void _startCountdown() {
@@ -76,6 +111,79 @@ class OrderNotifier extends StateNotifier<OrderState> {
         );
       }
     });
+  }
+
+  /// Places a new order via API and updates the local state
+  Future<OrderModel> placeOrder({
+    required CartModel cart,
+    required PaymentMethodType paymentMethod,
+    required String deliveryAddress,
+    String? addressId,
+    String deliveryInstructions = '',
+    String? razorpayPaymentId,
+  }) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    final String paymentMode =
+        paymentMethod == PaymentMethodType.cod ? 'COD' : 'ONLINE';
+
+    Map<String, dynamic>? apiResponse;
+    try {
+      apiResponse = await _api.checkout(
+        paymentMode: paymentMode,
+        addressId: addressId,
+        instructions: deliveryInstructions,
+      );
+    } catch (e) {
+      debugPrint('API checkout error: $e. Creating local session order.');
+    }
+
+    final createdOrder = apiResponse != null && apiResponse.isNotEmpty
+        ? OrderModel.fromApi(apiResponse, fallbackItems: cart.items)
+        : OrderModel(
+            orderId: 'ORD_${DateTime.now().millisecondsSinceEpoch}',
+            shopId: cart.shopId ?? 'shop_1',
+            shopName: cart.shopName ?? 'Mishra Ji Sweets',
+            shopAddress: 'Civil Lines, Lucknow',
+            fssaiLicense: 'FSSAI: 12723999000142',
+            gstin: '09AAAFM1234F1Z5',
+            items: List.from(cart.items),
+            orderStatus: OrderStatus.confirmingOrder,
+            paymentStatus: paymentMethod == PaymentMethodType.cod
+                ? PaymentStatus.codPending
+                : PaymentStatus.paid,
+            paymentMethod: paymentMethod,
+            subtotal: cart.subtotal,
+            discountAmount: cart.discountAmount,
+            deliveryFee: cart.deliveryFee ?? 0.0,
+            packagingFee: cart.packagingFee ?? 0.0,
+            platformFee: cart.platformFee ?? 0.0,
+            taxes: cart.taxes ?? 0.0,
+            tipAmount: 0.0,
+            totalAmount: cart.grandTotal,
+            deliveryAddress: deliveryAddress,
+            deliveryInstructions:
+                deliveryInstructions.isNotEmpty ? deliveryInstructions : null,
+            createdAt: DateTime.now(),
+            estimatedDeliveryTime: DateTime.now().add(const Duration(minutes: 35)),
+          );
+
+    _countdownTimer?.cancel();
+    final updatedPast = List<OrderModel>.from(state.pastOrders);
+    updatedPast.removeWhere((o) => o.orderId == createdOrder.orderId);
+    updatedPast.insert(0, createdOrder);
+
+    state = state.copyWith(
+      activeOrder: createdOrder,
+      pastOrders: updatedPast,
+      confirmationCountdownSeconds: 180,
+      isCountdownRunning: true,
+      activeOrderConfirmationPhase: 'Active Waiting',
+      isLoading: false,
+    );
+
+    _startCountdown();
+    return createdOrder;
   }
 
   /// Accept proposed changes

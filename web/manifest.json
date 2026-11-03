@@ -1,11 +1,11 @@
 {
-    "name": "fdp",
-    "short_name": "fdp",
+    "name": "Mishra Ji Champaran Wale",
+    "short_name": "Mishra Ji",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#360204",
+    "theme_color": "#360204",
+    "description": "Mishra Ji Champaran Wale sweets and desserts.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

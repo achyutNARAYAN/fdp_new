@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/config/api_config.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
@@ -9,14 +10,16 @@ import '../../shared/models/item_model.dart';
 import '../../shared/providers/cart_provider.dart';
 import '../../shared/providers/favorites_provider.dart';
 import '../../shared/providers/catalog_provider.dart';
+import '../../shared/providers/store_provider.dart';
 import '../../shared/widgets/badges/diet_marker.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
 import 'customise_sheet.dart';
 
 class ItemDetailsScreen extends ConsumerStatefulWidget {
   final String itemId;
+  final ItemModel? initialItem;
 
-  const ItemDetailsScreen({super.key, required this.itemId});
+  const ItemDetailsScreen({super.key, required this.itemId, this.initialItem});
 
   @override
   ConsumerState<ItemDetailsScreen> createState() => _ItemDetailsScreenState();
@@ -32,6 +35,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
   }
 
   ItemModel? _findItem() {
+    if (widget.initialItem != null) return widget.initialItem;
     final catalogItems = ref.read(catalogProvider).items;
     final found = catalogItems.where((i) => i.id == widget.itemId).firstOrNull;
     if (found != null) return found;
@@ -51,12 +55,15 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final itemAsync = ref.watch(catalogItemProvider(widget.itemId));
-    final item = _findItem() ?? itemAsync.asData?.value;
+    final cachedItem = _findItem();
+    final itemAsync = cachedItem == null
+        ? ref.watch(catalogItemProvider(widget.itemId))
+        : null;
+    final item = cachedItem ?? itemAsync?.asData?.value;
     if (item == null) {
       return Scaffold(
         body: Center(
-          child: itemAsync.isLoading
+          child: itemAsync?.isLoading == true
               ? const CircularProgressIndicator()
               : const Text('Item not found.'),
         ),
@@ -64,10 +71,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
     }
     final defaultVariant = item.defaultVariant;
     if (defaultVariant == null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: Center(child: Text(item.name)),
-      );
+      return _buildCatalogDetails(item);
     }
     if (item.availability == ItemAvailability.unavailable) {
       return Scaffold(
@@ -434,6 +438,306 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCatalogDetails(ItemModel item) {
+    final offersAsync = ref.watch(catalogOffersProvider(item.id));
+    final favorites = ref.watch(favoritesProvider);
+    final isFavorite = favorites.favoriteItemIds.contains(item.id);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(item.category),
+        actions: [
+          IconButton(
+            onPressed: () => ref
+                .read(favoritesProvider.notifier)
+                .toggleItemFavorite(item.id),
+            icon: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: isFavorite ? AppColors.accent : AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: AppDimensions.p24),
+        children: [
+          AspectRatio(
+            aspectRatio: 1.2,
+            child: Image.network(
+              item.imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                color: AppColors.primaryTint10,
+                child: const Icon(
+                  Icons.bakery_dining,
+                  size: 72,
+                  color: AppColors.neutral,
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(AppDimensions.p20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    DietMarker(dietType: item.dietType, showLabel: true),
+                    const Spacer(),
+                    if (item.approxPrepTimeMinutes != null)
+                      Text(
+                        '${item.approxPrepTimeMinutes} min prep',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(item.name, style: AppTypography.heading1),
+                if (item.hindiName?.isNotEmpty == true) ...[
+                  const SizedBox(height: 2),
+                  Text(item.hindiName!, style: AppTypography.bodySmall),
+                ],
+                const SizedBox(height: 12),
+                Text(item.description, style: AppTypography.body),
+                if (item.allowedUnits.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  const Text('Available sizes', style: AppTypography.itemName),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: item.allowedUnits
+                        .map(
+                          (unit) => Chip(
+                            label: Text(ApiConfig.formatMeasurementUnit(unit)),
+                            backgroundColor: AppColors.surface,
+                            side: const BorderSide(
+                              color: AppColors.neutralBorder,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+                if (item.ingredients.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  const Text('Ingredients', style: AppTypography.itemName),
+                  const SizedBox(height: 6),
+                  Text(
+                    item.ingredients.join(' · '),
+                    style: AppTypography.bodySmall,
+                  ),
+                ],
+                if (item.allergens.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: AppColors.accent,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Contains: ${item.allergens.join(', ')}',
+                          style: AppTypography.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 28),
+                Text('Order from a shop', style: AppTypography.sectionTitle),
+                const SizedBox(height: 4),
+                Text(
+                  'Prices and sizes vary by shop.',
+                  style: AppTypography.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                offersAsync.when(
+                  loading: () => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                  error: (_, _) => _buildOffersEmpty(
+                    'Could not load shop menus. Pull to refresh or try again.',
+                    onBrowse: () =>
+                        ref.invalidate(catalogOffersProvider(item.id)),
+                  ),
+                  data: (offers) => offers.isEmpty
+                      ? _buildOffersEmpty(
+                          'No open shop currently lists this item.',
+                          onBrowse: () => context.push('/search'),
+                        )
+                      : Column(
+                          children: offers
+                              .map((offer) => _buildShopOffer(context, offer))
+                              .toList(),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOffersEmpty(String message, {required VoidCallback onBrowse}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+        border: Border.all(color: AppColors.neutralLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(message, style: AppTypography.bodySmall),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: onBrowse,
+            icon: const Icon(Icons.storefront_outlined),
+            label: const Text('Browse shops'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShopOffer(BuildContext context, ItemModel offer) {
+    final variant = offer.defaultVariant!;
+    final cart = ref.watch(cartProvider);
+    final cartItemIndex = cart.items.indexWhere(
+      (ci) => ci.item.id == offer.id && ci.selectedVariant.id == variant.id,
+    );
+    final bool inCart = cartItemIndex >= 0;
+    final int quantity = inCart ? cart.items[cartItemIndex].quantity : 0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+        border: Border.all(color: AppColors.neutralLight),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(12),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.network(
+            offer.imageUrl,
+            width: 60,
+            height: 60,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => Container(
+              width: 60,
+              height: 60,
+              color: AppColors.primaryTint10,
+              child: const Icon(Icons.storefront_outlined),
+            ),
+          ),
+        ),
+        title: Text(offer.shopName, style: AppTypography.itemName),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            '${Formatters.formatCurrency(variant.price)} · ${variant.label}',
+            style: AppTypography.price.copyWith(fontSize: 14),
+          ),
+        ),
+        trailing: inCart
+            ? Container(
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 32),
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.remove, size: 14, color: AppColors.onPrimary),
+                      onPressed: () {
+                        final currentCart = ref.read(cartProvider);
+                        if (cartItemIndex >= 0 && cartItemIndex < currentCart.items.length) {
+                          ref.read(cartProvider.notifier).updateQuantity(
+                                currentCart.items[cartItemIndex].id,
+                                quantity - 1,
+                              );
+                        }
+                      },
+                    ),
+                    Text(
+                      '$quantity',
+                      style: const TextStyle(
+                        color: AppColors.onPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                    IconButton(
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 32),
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.add, size: 14, color: AppColors.onPrimary),
+                      onPressed: () {
+                        final currentCart = ref.read(cartProvider);
+                        if (cartItemIndex >= 0 && cartItemIndex < currentCart.items.length) {
+                          ref.read(cartProvider.notifier).updateQuantity(
+                                currentCart.items[cartItemIndex].id,
+                                quantity + 1,
+                              );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              )
+            : SizedBox(
+                height: 32,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () {
+                    try {
+                      ref.read(cartProvider.notifier).addItem(
+                            item: offer,
+                            variant: variant,
+                          );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${offer.name} added to cart from ${offer.shopName}!'),
+                          backgroundColor: AppColors.textPrimary,
+                          duration: const Duration(milliseconds: 1400),
+                        ),
+                      );
+                    } on CartConflictException catch (e) {
+                      _showReplaceCartDialog(context, ref, e);
+                    }
+                  },
+                  child: const Text('ADD', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+              ),
+        onTap: () => context.push('/shop/${offer.shopId}'),
       ),
     );
   }

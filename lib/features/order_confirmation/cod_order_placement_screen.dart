@@ -5,16 +5,65 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
+import '../../shared/models/order_model.dart';
 import '../../shared/providers/cart_provider.dart';
 import '../../shared/providers/location_provider.dart';
+import '../../shared/providers/order_provider.dart';
 import '../../shared/widgets/badges/status_chip.dart';
 import '../../shared/widgets/buttons/app_primary_button.dart';
 
-class CodOrderPlacementScreen extends ConsumerWidget {
+class CodOrderPlacementScreen extends ConsumerStatefulWidget {
   const CodOrderPlacementScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CodOrderPlacementScreen> createState() =>
+      _CodOrderPlacementScreenState();
+}
+
+class _CodOrderPlacementScreenState
+    extends ConsumerState<CodOrderPlacementScreen> {
+  bool _isPlacing = false;
+
+  Future<void> _handlePlaceCodOrder() async {
+    final cart = ref.read(cartProvider);
+    if (cart.isEmpty) {
+      context.go('/cart');
+      return;
+    }
+
+    setState(() => _isPlacing = true);
+    final location = ref.read(locationProvider);
+    final deliveryAddress = location.selectedAddress?.fullAddress ??
+        location.selectedAddress?.title ??
+        'Hazratganj, Lucknow, UP';
+
+    try {
+      final order = await ref.read(orderProvider.notifier).placeOrder(
+            cart: cart,
+            paymentMethod: PaymentMethodType.cod,
+            deliveryAddress: deliveryAddress,
+            addressId: location.selectedAddress?.id,
+          );
+
+      await ref.read(cartProvider.notifier).clearCart();
+
+      if (!mounted) return;
+      setState(() => _isPlacing = false);
+      context.go('/waiting-confirmation/${order.orderId}');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isPlacing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to place order: $e'),
+          backgroundColor: AppColors.accent,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final cart = ref.watch(cartProvider);
     final location = ref.watch(locationProvider);
 
@@ -31,8 +80,8 @@ class CodOrderPlacementScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const StatusChip(
-                label: 'Order placement is unavailable.',
-                type: StatusChipType.info,
+                label: 'Cash Payment at Doorstep',
+                type: StatusChipType.success,
               ),
               const SizedBox(height: 16),
 
@@ -40,7 +89,7 @@ class CodOrderPlacementScreen extends ConsumerWidget {
               const SizedBox(height: 8),
 
               const Text(
-                'Order placement will be available when the order API is connected.',
+                'Your sweet treat order will be sent to the shop for instant confirmation.',
                 style: AppTypography.bodySmall,
               ),
               const SizedBox(height: 24),
@@ -58,7 +107,7 @@ class CodOrderPlacementScreen extends ConsumerWidget {
                     const Icon(
                       Icons.currency_rupee,
                       size: 28,
-                      color: AppColors.accent,
+                      color: AppColors.primary,
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -94,11 +143,15 @@ class CodOrderPlacementScreen extends ConsumerWidget {
                 ),
                 child: Column(
                   children: [
-                    _row('Shop', cart.shopName ?? ''),
+                    _row('Shop', cart.shopName ?? 'Mishra Ji Sweets'),
                     _row('Total Items', '${cart.totalItemCount} items'),
                     _row(
                       'Delivery Address',
-                      location.selectedAddress?.title ?? '',
+                      location.selectedAddress?.title ?? 'Saved Address',
+                    ),
+                    _row(
+                      'Amount to Pay',
+                      Formatters.formatCurrency(cart.grandTotal),
                     ),
                   ],
                 ),
@@ -107,8 +160,9 @@ class CodOrderPlacementScreen extends ConsumerWidget {
               const Spacer(),
 
               AppPrimaryButton(
-                label: 'Back to cart',
-                onPressed: () => context.go('/cart'),
+                isLoading: _isPlacing,
+                label: 'Confirm & Place COD Order',
+                onPressed: _isPlacing ? null : _handlePlaceCodOrder,
               ),
             ],
           ),
@@ -124,7 +178,14 @@ class CodOrderPlacementScreen extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: AppTypography.caption),
-          Text(value, style: AppTypography.itemName.copyWith(fontSize: 14)),
+          Flexible(
+            child: Text(
+              value,
+              style: AppTypography.itemName.copyWith(fontSize: 14),
+              textAlign: TextAlign.end,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );

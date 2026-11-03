@@ -21,7 +21,12 @@ class OrderConfirmedScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderState = ref.watch(orderProvider);
-    final order = orderState.activeOrder;
+    final order = (orderState.activeOrder?.orderId == orderId
+            ? orderState.activeOrder
+            : orderState.pastOrders
+                .where((o) => o.orderId == orderId)
+                .firstOrNull) ??
+        orderState.activeOrder;
     if (order == null) return const NoOrderData();
 
     return Scaffold(

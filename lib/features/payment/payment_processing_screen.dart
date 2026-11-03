@@ -3,11 +3,16 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 
-class PaymentProcessingScreen extends StatelessWidget {
+class PaymentProcessingScreen extends StatefulWidget {
   final String method;
 
   const PaymentProcessingScreen({super.key, required this.method});
 
+  @override
+  State<PaymentProcessingScreen> createState() => _PaymentProcessingScreenState();
+}
+
+class _PaymentProcessingScreenState extends State<PaymentProcessingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,16 +37,15 @@ class PaymentProcessingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 36),
 
-              // Amount in 32 Bold
               const Text(
-                'Payment gateway unavailable',
-                style: AppTypography.heading2,
+                'Processing Payment…',
+                style: AppTypography.heading1,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
 
-              const Text(
-                'Payment cannot be verified because the payment API is not connected.',
+              Text(
+                'Connecting with Razorpay secure gateway (${widget.method.toUpperCase()}).\nPlease do not press back or refresh.',
                 style: AppTypography.bodySmall,
                 textAlign: TextAlign.center,
               ),
@@ -50,8 +54,8 @@ class PaymentProcessingScreen extends StatelessWidget {
 
               const Spacer(),
               TextButton(
-                onPressed: () => context.go('/cart'),
-                child: const Text('Back to cart'),
+                onPressed: () => context.go('/checkout'),
+                child: const Text('Back to checkout'),
               ),
             ],
           ),

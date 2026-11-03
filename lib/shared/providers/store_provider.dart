@@ -83,3 +83,36 @@ final storeMenuProvider = FutureProvider.family<List<ItemModel>, String>((
       '';
   return await storeApiService.getStoreMenu(storeId, storeName: storeName);
 });
+
+/// Finds orderable offers for one catalog product across currently open shops.
+final catalogOffersProvider = FutureProvider.family<List<ItemModel>, String>((
+  ref,
+  catalogItemId,
+) async {
+  final stores = ref
+      .watch(storesProvider)
+      .stores
+      .where((store) => store.isOpen)
+      .toList();
+  final menus = await Future.wait(
+    stores.map((store) async {
+      try {
+        return await storeApiService.getStoreMenu(
+          store.id,
+          storeName: store.name,
+        );
+      } catch (_) {
+        return <ItemModel>[];
+      }
+    }),
+  );
+  return menus
+      .expand((items) => items)
+      .where(
+        (item) =>
+            item.id == catalogItemId &&
+            item.availability == ItemAvailability.available &&
+            item.variants.isNotEmpty,
+      )
+      .toList();
+});

@@ -330,7 +330,7 @@ class _ShopPageScreenState extends ConsumerState<ShopPageScreen> {
                         const SizedBox(width: 6),
                         Switch(
                           value: _vegOnly,
-                          activeColor: AppColors.primary,
+                          activeThumbColor: AppColors.primary,
                           activeTrackColor: AppColors.primaryTint20,
                           onChanged: (val) => setState(() => _vegOnly = val),
                         ),
@@ -368,7 +368,8 @@ class _ShopPageScreenState extends ConsumerState<ShopPageScreen> {
                         final item = filteredItems[index];
                         return ItemCard(
                           item: item,
-                          onTap: () => context.push('/item/${item.id}'),
+                          onTap: () =>
+                              context.push('/item/${item.id}', extra: item),
                         );
                       }, childCount: filteredItems.length),
                     ),

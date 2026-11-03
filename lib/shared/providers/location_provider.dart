@@ -46,6 +46,10 @@ class LocationNotifier extends StateNotifier<LocationState> {
     );
   }
 
+  void selectCoordinates(LatLng coordinates) {
+    state = state.copyWith(currentCoordinates: coordinates);
+  }
+
   Future<GeocodingResult?> useCurrentLocation() async {
     state = state.copyWith(isLoadingLocation: true);
     try {

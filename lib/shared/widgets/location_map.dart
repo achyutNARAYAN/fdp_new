@@ -5,8 +5,9 @@ import 'package:latlong2/latlong.dart';
 class LocationMap extends StatelessWidget {
   final LatLng? center;
   final double height;
+  final ValueChanged<LatLng>? onTap;
 
-  const LocationMap({super.key, required this.center, this.height = 280});
+  const LocationMap({super.key, required this.center, this.height = 280, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +23,7 @@ class LocationMap extends StatelessWidget {
               options: MapOptions(
                 initialCenter: location,
                 initialZoom: center == null ? 1.5 : 15,
+                onTap: onTap == null ? null : (_, point) => onTap!(point),
               ),
               children: [
                 TileLayer(

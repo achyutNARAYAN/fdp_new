@@ -91,7 +91,12 @@ class _WaitingConfirmationScreenState
   @override
   Widget build(BuildContext context) {
     final orderState = ref.watch(orderProvider);
-    final order = orderState.activeOrder;
+    final order = (orderState.activeOrder?.orderId == widget.orderId
+            ? orderState.activeOrder
+            : orderState.pastOrders
+                .where((o) => o.orderId == widget.orderId)
+                .firstOrNull) ??
+        orderState.activeOrder;
     if (order == null) return const NoOrderData();
     final int seconds = orderState.confirmationCountdownSeconds;
     final double progress = seconds / 180.0; // 03:00 to 00:00

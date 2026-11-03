@@ -18,8 +18,13 @@ import '../../shared/widgets/location_map.dart';
 
 class AddEditAddressScreen extends ConsumerStatefulWidget {
   final AddressModel? existingAddress;
+  final AddressModel? initialAddress;
 
-  const AddEditAddressScreen({super.key, this.existingAddress});
+  const AddEditAddressScreen({
+    super.key,
+    this.existingAddress,
+    this.initialAddress,
+  });
 
   @override
   ConsumerState<AddEditAddressScreen> createState() =>
@@ -47,7 +52,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   @override
   void initState() {
     super.initState();
-    final addr = widget.existingAddress;
+    final addr = widget.initialAddress ?? widget.existingAddress;
     final user = ref.read(authProvider).user;
     _coordinates =
         addr?.coordinates ?? ref.read(locationProvider).currentCoordinates;
@@ -135,7 +140,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
       }
       if (!mounted) return;
       ref.read(locationProvider.notifier).selectAddress(newAddr);
-      context.pop();
+      context.pop(true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -267,7 +272,11 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  LocationMap(center: _coordinates, height: 220),
+                  LocationMap(
+                    center: _coordinates,
+                    height: 220,
+                    onTap: (point) => setState(() => _coordinates = point),
+                  ),
 
                   // Form Fields
                   Padding(
