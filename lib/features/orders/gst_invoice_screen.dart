@@ -70,30 +70,33 @@ class GstInvoiceScreen extends ConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    order.shopName,
-                                    style: AppTypography.heading2,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    order.shopAddress,
-                                    style: AppTypography.caption,
-                                  ),
-                                  Text(
-                                    'FSSAI Lic. No: ${order.fssaiLicense}',
-                                    style: AppTypography.caption,
-                                  ),
-                                  Text(
-                                    'GSTIN: ${order.gstin}',
-                                    style: AppTypography.caption.copyWith(
-                                      fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      order.shopName,
+                                      style: AppTypography.heading2,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      order.shopAddress,
+                                      style: AppTypography.caption,
+                                    ),
+                                    Text(
+                                      'FSSAI Lic. No: ${order.fssaiLicense}',
+                                      style: AppTypography.caption,
+                                    ),
+                                    Text(
+                                      'GSTIN: ${order.gstin}',
+                                      style: AppTypography.caption.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
@@ -118,59 +121,66 @@ class GstInvoiceScreen extends ConsumerWidget {
 
                           // Invoice Number, Date, Customer Details
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Billed To (Customer):',
-                                    style: AppTypography.caption,
-                                  ),
-                                  const Text(
-                                    'Aarav Sharma',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
+                              Expanded(
+                                flex: 5,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Billed To (Customer):',
+                                      style: AppTypography.caption,
                                     ),
-                                  ),
-                                  SizedBox(
-                                    width: 160,
-                                    child: Text(
+                                    const Text(
+                                      'Aarav Sharma',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    Text(
                                       order.deliveryAddress,
                                       style: AppTypography.caption,
                                     ),
-                                  ),
-                                  const Text(
-                                    'State: Karnataka (29)',
-                                    style: AppTypography.caption,
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    'Invoice #: INV-${order.orderId}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
+                                    const Text(
+                                      'State: Karnataka (29)',
+                                      style: AppTypography.caption,
                                     ),
-                                  ),
-                                  Text(
-                                    'Date: ${Formatters.formatDate(order.createdAt)}',
-                                    style: AppTypography.caption,
-                                  ),
-                                  Text(
-                                    'Order ID: #${order.orderId}',
-                                    style: AppTypography.caption,
-                                  ),
-                                  Text(
-                                    'Payment: ${order.paymentStatus.label}',
-                                    style: AppTypography.caption,
-                                  ),
-                                ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 6,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'Invoice #: INV-${order.orderId}',
+                                      textAlign: TextAlign.end,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Date: ${Formatters.formatDate(order.createdAt)}',
+                                      textAlign: TextAlign.end,
+                                      style: AppTypography.caption,
+                                    ),
+                                    Text(
+                                      'Order ID: #${order.orderId}',
+                                      textAlign: TextAlign.end,
+                                      style: AppTypography.caption,
+                                    ),
+                                    Text(
+                                      'Payment: ${order.paymentStatus.label}',
+                                      textAlign: TextAlign.end,
+                                      style: AppTypography.caption,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -412,7 +422,7 @@ class GstInvoiceScreen extends ConsumerWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: AppPrimaryButton(
-                    label: 'Download Invoice',
+                    label: 'Download PDF',
                     icon: Icons.download_outlined,
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(

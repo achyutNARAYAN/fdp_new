@@ -31,7 +31,15 @@ class AuthState {
     this.resendAvailableAt,
   });
 
-  String? get phoneNumber => user?.mobileNumber ?? identifier;
+  String? get phoneNumber {
+    if (user?.mobileNumber != null && user!.mobileNumber.trim().isNotEmpty) {
+      return user!.mobileNumber.trim();
+    }
+    if (identifier != null && !identifier!.contains('@')) {
+      return identifier!.trim();
+    }
+    return null;
+  }
 
   AuthState copyWith({
     AuthStatus? status,

@@ -41,13 +41,16 @@ class _AppPrimaryButtonState extends State<AppPrimaryButton> {
       duration: const Duration(milliseconds: 120),
       child: SizedBox(
         width: widget.width ?? double.infinity,
-        height: AppDimensions.heightButton,
+        height: AppDimensions.heightButton + 4,
         child: GestureDetector(
           onTapDown: (_) => setState(() => _isPressed = true),
           onTapUp: (_) => setState(() => _isPressed = false),
           onTapCancel: () => setState(() => _isPressed = false),
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
+          child: Center(
+            child: SizedBox(
+              height: AppDimensions.heightButton,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
               backgroundColor: isDisabled
                   ? AppColors.neutralLight
                   : (_isPressed ? AppColors.primaryPressed : AppColors.primary),
@@ -58,8 +61,8 @@ class _AppPrimaryButtonState extends State<AppPrimaryButton> {
                 borderRadius: BorderRadius.circular(AppDimensions.radiusButton),
               ),
             ),
-            onPressed: isDisabled ? null : widget.onPressed,
-            child: widget.isLoading
+                onPressed: isDisabled ? null : widget.onPressed,
+                child: widget.isLoading
                 ? const SizedBox(
                     width: 20,
                     height: 20,
@@ -90,6 +93,8 @@ class _AppPrimaryButtonState extends State<AppPrimaryButton> {
                           ),
                         ],
                       ),
+              ),
+            ),
           ),
         ),
       ),

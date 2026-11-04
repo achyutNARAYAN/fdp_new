@@ -76,7 +76,15 @@ class AddressSelectionScreen extends ConsumerWidget {
                                 color: AppColors.textPrimary,
                               ),
                               const SizedBox(width: 8),
-                              Text(addr.title, style: AppTypography.itemName),
+                              Flexible(
+                                fit: FlexFit.loose,
+                                child: Text(
+                                  addr.title,
+                                  style: AppTypography.itemName,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                               if (addr.isDefault) ...[
                                 const SizedBox(width: 8),
                                 Container(
@@ -97,7 +105,6 @@ class AddressSelectionScreen extends ConsumerWidget {
                                   ),
                                 ),
                               ],
-                              const Spacer(),
                               if (isSelected)
                                 const Icon(
                                   Icons.check_circle,
@@ -119,6 +126,7 @@ class AddressSelectionScreen extends ConsumerWidget {
                           if (isBlocked) ...[
                             const SizedBox(height: 8),
                             const Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Icon(
                                   Icons.error_outline,
@@ -126,11 +134,13 @@ class AddressSelectionScreen extends ConsumerWidget {
                                   color: AppColors.accent,
                                 ),
                                 SizedBox(width: 4),
-                                Text(
-                                  'This shop doesn’t deliver to this address right now.',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.accentPressed,
+                                Expanded(
+                                  child: Text(
+                                    'This shop doesn’t deliver to this address right now.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.accentPressed,
+                                    ),
                                   ),
                                 ),
                               ],

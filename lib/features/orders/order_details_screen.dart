@@ -58,7 +58,15 @@ class OrderDetailsScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(order.shopName, style: AppTypography.heading2),
+                      Expanded(
+                        child: Text(
+                          order.shopName,
+                          style: AppTypography.heading2,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       OrderStatusBadge(status: order.orderStatus),
                     ],
                   ),
@@ -66,10 +74,15 @@ class OrderDetailsScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Placed on ${Formatters.formatDate(order.createdAt)}',
-                        style: AppTypography.caption,
+                      Expanded(
+                        child: Text(
+                          'Placed on ${Formatters.formatDate(order.createdAt)}',
+                          style: AppTypography.caption,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       PaymentStatusBadge(status: order.paymentStatus),
                     ],
                   ),

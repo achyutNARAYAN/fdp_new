@@ -46,6 +46,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   void _handleRazorpaySuccess(PaymentSuccessResponse response) async {
+    if (mounted) setState(() => _isProcessing = true);
     await _placeOrderAndNavigate(
       method: PaymentMethodType.upi,
       razorpayPaymentId: response.paymentId,
@@ -101,6 +102,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         userPhone: authState.phoneNumber,
         orderDescription: '${cart.totalItemCount} confectionery items',
       );
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 
@@ -298,7 +302,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               'GPay, PhonePe, Paytm, Visa, Mastercard, NetBanking',
                           type: PaymentMethodType.upi,
                           icon: Icons.account_balance_wallet_outlined,
-                          badgeText: 'Test ID: ${ApiConfig.razorpayKeyId.substring(0, 12)}...',
                         ),
                         const Divider(height: 16),
                         // Cash on Delivery Option
@@ -367,28 +370,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 16),
-
-                  // 7. Trust Row
-                  const Center(
-                    child: Text(
-                      'FSSAI Certified Kitchens • Safe Cold-Chain Handover • GST Invoices',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-
-                  const SizedBox(height: 80),
                 ],
               ),
             ),
           ),
 
-          // Sticky Bottom Pay CTA
           SafeArea(
             top: false,
             child: Container(

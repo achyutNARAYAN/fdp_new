@@ -6,12 +6,10 @@ class ApiConstants {
 
   static const String baseUrl = ApiConfig.baseUrl;
   static const String rootUrl = ApiConfig.rootUrl;
-  static const String localBaseUrl = ApiConfig.localBaseUrl;
   static const Duration timeout = ApiConfig.timeout;
 
   // Razorpay
   static const String razorpayKeyId = ApiConfig.razorpayKeyId;
-  static const String razorpayKeySecret = ApiConfig.razorpayKeySecret;
 
   // Endpoints
   static const String authLogin = '/customers/auth/login';
