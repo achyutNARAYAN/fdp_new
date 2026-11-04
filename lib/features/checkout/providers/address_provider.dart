@@ -5,14 +5,18 @@ import 'package:fdp/features/auth/providers/auth_provider.dart';
 
 class AddressNotifier extends StateNotifier<List<AddressModel>> {
   final CustomerApiService _apiService;
+  int _loadGeneration = 0;
 
   AddressNotifier({CustomerApiService? apiService})
     : _apiService = apiService ?? customerApiService,
       super(const []);
 
   Future<void> loadAddresses() async {
+    final generation = ++_loadGeneration;
     try {
-      state = await _apiService.getAddresses();
+      final addresses = await _apiService.getAddresses();
+      if (generation != _loadGeneration) return;
+      state = addresses;
     } catch (_) {}
   }
 
@@ -39,7 +43,10 @@ class AddressNotifier extends StateNotifier<List<AddressModel>> {
         .toList();
   }
 
-  void clear() => state = const [];
+  void clear() {
+    _loadGeneration++;
+    state = const [];
+  }
 }
 
 final addressListProvider =

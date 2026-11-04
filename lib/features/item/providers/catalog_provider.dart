@@ -28,6 +28,7 @@ class CatalogState {
 
 class CatalogNotifier extends StateNotifier<CatalogState> {
   final CatalogApiService _apiService;
+  int _loadGeneration = 0;
 
   CatalogNotifier({CatalogApiService? apiService})
       : _apiService = apiService ?? catalogApiService,
@@ -36,6 +37,7 @@ class CatalogNotifier extends StateNotifier<CatalogState> {
   }
 
   Future<void> loadCatalog({String? category, String? search, String? dietaryType}) async {
+    final generation = ++_loadGeneration;
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final items = await _apiService.getCatalogItems(
@@ -43,8 +45,10 @@ class CatalogNotifier extends StateNotifier<CatalogState> {
         search: search,
         dietaryType: dietaryType,
       );
+      if (generation != _loadGeneration) return;
       state = state.copyWith(isLoading: false, items: items);
     } catch (e) {
+      if (generation != _loadGeneration) return;
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
