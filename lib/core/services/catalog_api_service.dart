@@ -1,5 +1,5 @@
 import '../network/api_client.dart';
-import '../../shared/models/item_model.dart';
+import 'package:fdp/features/item/models/item_model.dart';
 
 class CatalogApiService {
   final ApiClient _client;

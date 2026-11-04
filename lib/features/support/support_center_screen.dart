@@ -4,10 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
-import '../../shared/providers/order_provider.dart';
-import '../../shared/providers/support_provider.dart';
-import '../../shared/widgets/badges/status_chip.dart';
-import '../../shared/widgets/buttons/app_primary_button.dart';
+import 'package:fdp/features/orders/providers/order_provider.dart';
+import 'package:fdp/features/support/providers/support_provider.dart';
+import 'package:fdp/core/widgets/badges/status_chip.dart';
+import 'package:fdp/core/widgets/buttons/app_primary_button.dart';
 
 class SupportCenterScreen extends ConsumerWidget {
   const SupportCenterScreen({super.key});

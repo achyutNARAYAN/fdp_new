@@ -5,11 +5,11 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
-import '../../shared/models/order_model.dart';
-import '../../shared/providers/order_provider.dart';
-import '../../shared/widgets/badges/order_status_badge.dart';
-import '../../shared/widgets/badges/payment_status_badge.dart';
-import '../../shared/widgets/buttons/app_secondary_button.dart';
+import 'package:fdp/features/orders/models/order_model.dart';
+import 'package:fdp/features/orders/providers/order_provider.dart';
+import 'package:fdp/core/widgets/badges/order_status_badge.dart';
+import 'package:fdp/core/widgets/badges/payment_status_badge.dart';
+import 'package:fdp/core/widgets/buttons/app_secondary_button.dart';
 
 class OrderHistoryScreen extends ConsumerStatefulWidget {
   const OrderHistoryScreen({super.key});

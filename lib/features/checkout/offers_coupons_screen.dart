@@ -5,7 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
-import '../../shared/providers/cart_provider.dart';
+import 'package:fdp/features/cart/providers/cart_provider.dart';
 
 class OffersCouponsScreen extends ConsumerStatefulWidget {
   const OffersCouponsScreen({super.key});

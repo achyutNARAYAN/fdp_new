@@ -5,8 +5,8 @@ import '../../core/config/api_config.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
-import '../../shared/models/order_model.dart';
-import '../../shared/widgets/buttons/app_primary_button.dart';
+import 'package:fdp/features/orders/models/order_model.dart';
+import 'package:fdp/core/widgets/buttons/app_primary_button.dart';
 
 class PaymentMethodScreen extends ConsumerStatefulWidget {
   const PaymentMethodScreen({super.key});

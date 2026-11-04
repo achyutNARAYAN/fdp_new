@@ -1,6 +1,6 @@
 import '../network/api_client.dart';
-import '../../shared/models/shop_model.dart';
-import '../../shared/models/item_model.dart';
+import 'package:fdp/features/item/models/shop_model.dart';
+import 'package:fdp/features/item/models/item_model.dart';
 
 class StoreApiService {
   final ApiClient _client;

@@ -6,11 +6,11 @@ import '../../core/services/geocoding_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/theme/app_typography.dart';
-import '../../shared/models/address_model.dart';
-import '../../shared/providers/auth_provider.dart';
-import '../../shared/providers/location_provider.dart';
-import '../../shared/widgets/buttons/app_primary_button.dart';
-import '../../shared/widgets/location_map.dart';
+import 'package:fdp/core/models/address_model.dart';
+import 'package:fdp/features/auth/providers/auth_provider.dart';
+import 'package:fdp/core/providers/location_provider.dart';
+import 'package:fdp/core/widgets/buttons/app_primary_button.dart';
+import 'package:fdp/core/widgets/location_map.dart';
 
 class DeliveryLocationScreen extends ConsumerStatefulWidget {
   const DeliveryLocationScreen({super.key});

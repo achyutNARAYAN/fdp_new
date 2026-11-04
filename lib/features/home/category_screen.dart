@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/theme/app_typography.dart';
-import '../../shared/providers/catalog_provider.dart';
-import '../../shared/widgets/cards/item_card.dart';
+import 'package:fdp/features/item/providers/catalog_provider.dart';
+import 'package:fdp/core/widgets/cards/item_card.dart';
 
 class CategoryScreen extends ConsumerWidget {
   final String categoryName;

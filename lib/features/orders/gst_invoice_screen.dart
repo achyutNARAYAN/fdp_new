@@ -4,10 +4,10 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
-import '../../shared/providers/order_provider.dart';
-import '../../shared/widgets/buttons/app_primary_button.dart';
-import '../../shared/widgets/buttons/app_secondary_button.dart';
-import '../../shared/widgets/layout/no_order_data.dart';
+import 'package:fdp/features/orders/providers/order_provider.dart';
+import 'package:fdp/core/widgets/buttons/app_primary_button.dart';
+import 'package:fdp/core/widgets/buttons/app_secondary_button.dart';
+import 'package:fdp/core/widgets/layout/no_order_data.dart';
 
 class GstInvoiceScreen extends ConsumerWidget {
   final String orderId;

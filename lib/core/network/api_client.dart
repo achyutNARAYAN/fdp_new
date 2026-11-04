@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
-import 'api_exception.dart';
+import '../errors/api_exception.dart';
 import 'api_logger.dart';
 
 class ApiResponse<T> {

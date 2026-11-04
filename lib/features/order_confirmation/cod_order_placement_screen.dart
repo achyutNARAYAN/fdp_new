@@ -5,12 +5,12 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
-import '../../shared/models/order_model.dart';
-import '../../shared/providers/cart_provider.dart';
-import '../../shared/providers/location_provider.dart';
-import '../../shared/providers/order_provider.dart';
-import '../../shared/widgets/badges/status_chip.dart';
-import '../../shared/widgets/buttons/app_primary_button.dart';
+import 'package:fdp/features/orders/models/order_model.dart';
+import 'package:fdp/features/cart/providers/cart_provider.dart';
+import 'package:fdp/core/providers/location_provider.dart';
+import 'package:fdp/features/orders/providers/order_provider.dart';
+import 'package:fdp/core/widgets/badges/status_chip.dart';
+import 'package:fdp/core/widgets/buttons/app_primary_button.dart';
 
 class CodOrderPlacementScreen extends ConsumerStatefulWidget {
   const CodOrderPlacementScreen({super.key});

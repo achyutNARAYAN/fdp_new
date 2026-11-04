@@ -4,7 +4,7 @@ import '../models/cart_model.dart';
 import '../../item/models/item_model.dart';
 import '../../../core/config/api_config.dart';
 import '../../../core/services/cart_order_api_service.dart';
-import '../../../core/network/api_exception.dart';
+import '../../../core/errors/api_exception.dart';
 
 class CartConflictException implements Exception {
   final String currentShopName;

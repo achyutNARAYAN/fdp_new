@@ -5,8 +5,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
-import '../../shared/models/notification_model.dart';
-import '../../shared/providers/notification_provider.dart';
+import 'package:fdp/features/notifications/models/notification_model.dart';
+import 'package:fdp/features/notifications/providers/notification_provider.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});

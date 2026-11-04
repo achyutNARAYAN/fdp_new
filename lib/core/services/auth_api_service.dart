@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../network/api_client.dart';
-import '../../shared/models/user_model.dart';
+import 'package:fdp/core/models/user_model.dart';
 
 class OtpVerificationResult {
   final bool isNewCustomer;

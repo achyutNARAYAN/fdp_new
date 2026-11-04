@@ -4,10 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
-import '../../shared/models/address_model.dart';
-import '../../shared/providers/address_provider.dart';
-import '../../shared/providers/location_provider.dart';
-import '../../shared/widgets/buttons/app_primary_button.dart';
+import 'package:fdp/core/models/address_model.dart';
+import 'package:fdp/features/checkout/providers/address_provider.dart';
+import 'package:fdp/core/providers/location_provider.dart';
+import 'package:fdp/core/widgets/buttons/app_primary_button.dart';
 
 class AddressSelectionScreen extends ConsumerWidget {
   const AddressSelectionScreen({super.key});

@@ -6,13 +6,13 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
-import '../../shared/models/item_model.dart';
-import '../../shared/providers/cart_provider.dart';
-import '../../shared/providers/favorites_provider.dart';
-import '../../shared/providers/catalog_provider.dart';
-import '../../shared/providers/store_provider.dart';
-import '../../shared/widgets/badges/diet_marker.dart';
-import '../../shared/widgets/buttons/app_primary_button.dart';
+import 'package:fdp/features/item/models/item_model.dart';
+import 'package:fdp/features/cart/providers/cart_provider.dart';
+import 'package:fdp/features/favorites/providers/favorites_provider.dart';
+import 'package:fdp/features/item/providers/catalog_provider.dart';
+import 'package:fdp/features/item/providers/store_provider.dart';
+import 'package:fdp/core/widgets/badges/diet_marker.dart';
+import 'package:fdp/core/widgets/buttons/app_primary_button.dart';
 import 'customise_sheet.dart';
 
 class ItemDetailsScreen extends ConsumerStatefulWidget {

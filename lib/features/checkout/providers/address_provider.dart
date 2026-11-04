@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/address_model.dart';
-import '../../core/services/customer_api_service.dart';
-import 'auth_provider.dart';
+import 'package:fdp/core/models/address_model.dart';
+import 'package:fdp/core/services/customer_api_service.dart';
+import 'package:fdp/features/auth/providers/auth_provider.dart';
 
 class AddressNotifier extends StateNotifier<List<AddressModel>> {
   final CustomerApiService _apiService;

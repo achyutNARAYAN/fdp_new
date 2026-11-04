@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/item_model.dart';
-import '../../core/services/catalog_api_service.dart';
+import 'package:fdp/core/services/catalog_api_service.dart';
 
 class CatalogState {
   final bool isLoading;

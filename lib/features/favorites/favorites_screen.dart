@@ -5,15 +5,15 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
-import '../../shared/providers/catalog_provider.dart';
-import '../../shared/providers/store_provider.dart';
-import '../../shared/models/order_model.dart';
-import '../../shared/providers/favorites_provider.dart';
-import '../../shared/providers/order_provider.dart';
-import '../../shared/providers/cart_provider.dart';
-import '../../shared/widgets/cards/item_card.dart';
-import '../../shared/widgets/cards/shop_card.dart';
-import '../../shared/widgets/buttons/app_secondary_button.dart';
+import 'package:fdp/features/item/providers/catalog_provider.dart';
+import 'package:fdp/features/item/providers/store_provider.dart';
+import 'package:fdp/features/orders/models/order_model.dart';
+import 'package:fdp/features/favorites/providers/favorites_provider.dart';
+import 'package:fdp/features/orders/providers/order_provider.dart';
+import 'package:fdp/features/cart/providers/cart_provider.dart';
+import 'package:fdp/core/widgets/cards/item_card.dart';
+import 'package:fdp/core/widgets/cards/shop_card.dart';
+import 'package:fdp/core/widgets/buttons/app_secondary_button.dart';
 
 class FavoritesScreen extends ConsumerStatefulWidget {
   const FavoritesScreen({super.key});

@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
-import '../../shared/models/item_model.dart';
-import '../../shared/models/shop_model.dart';
-import '../../shared/models/diet_type.dart';
-import '../../shared/providers/catalog_provider.dart';
-import '../../shared/providers/store_provider.dart';
-import '../../shared/widgets/cards/item_card.dart';
-import '../../shared/widgets/cards/shop_card.dart';
+import 'package:fdp/features/item/models/item_model.dart';
+import 'package:fdp/features/item/models/shop_model.dart';
+import 'package:fdp/features/item/models/diet_type.dart';
+import 'package:fdp/features/item/providers/catalog_provider.dart';
+import 'package:fdp/features/item/providers/store_provider.dart';
+import 'package:fdp/core/widgets/cards/item_card.dart';
+import 'package:fdp/core/widgets/cards/shop_card.dart';
 
 class SearchResultsScreen extends ConsumerStatefulWidget {
   final String query;

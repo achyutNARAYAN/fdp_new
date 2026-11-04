@@ -48,9 +48,9 @@ import '../../features/support/support_center_screen.dart';
 import '../../features/support/raise_ticket_screen.dart';
 import '../../features/support/ticket_details_screen.dart';
 import '../../features/settings/settings_screen.dart';
-import '../../shared/widgets/layout/main_scaffold.dart';
-import '../../shared/models/address_model.dart';
-import '../../shared/models/item_model.dart';
+import 'package:fdp/core/widgets/layout/main_scaffold.dart';
+import 'package:fdp/core/models/address_model.dart';
+import 'package:fdp/features/item/models/item_model.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey =

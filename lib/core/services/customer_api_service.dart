@@ -1,7 +1,7 @@
 import '../network/api_client.dart';
-import '../../shared/models/user_model.dart';
-import '../../shared/models/address_model.dart';
-import '../network/api_exception.dart';
+import 'package:fdp/core/models/user_model.dart';
+import 'package:fdp/core/models/address_model.dart';
+import '../errors/api_exception.dart';
 
 class CustomerApiService {
   final ApiClient _client;
