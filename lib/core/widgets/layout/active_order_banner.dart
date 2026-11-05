@@ -61,18 +61,26 @@ class ActiveOrderBanner extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            'Order #${active.orderId}',
-                            style: AppTypography.itemName.copyWith(fontSize: 14),
+                          Flexible(
+                            child: Text(
+                              'Order #${active.orderNumber ?? (active.orderId.length > 8 ? active.orderId.substring(active.orderId.length - 6) : active.orderId)}',
+                              style: AppTypography.itemName.copyWith(fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ),
                           const SizedBox(width: 6),
                           Text('•', style: TextStyle(color: AppColors.textSecondary)),
                           const SizedBox(width: 6),
-                          Text(
-                            active.orderStatus.label,
-                            style: AppTypography.caption.copyWith(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.bold,
+                          Flexible(
+                            child: Text(
+                              active.orderStatus.label,
+                              style: AppTypography.caption.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
                           ),
                         ],
@@ -81,6 +89,8 @@ class ActiveOrderBanner extends ConsumerWidget {
                       Text(
                         'Estimated delivery in 20-25 min',
                         style: AppTypography.bodySmall.copyWith(fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ],
                   ),

@@ -7,9 +7,12 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/formatters.dart';
+import '../../core/utils/idempotency_utils.dart';
 import 'package:fdp/features/orders/models/order_model.dart';
 import 'package:fdp/features/auth/providers/auth_provider.dart';
 import 'package:fdp/features/cart/providers/cart_provider.dart';
+import 'package:fdp/core/models/address_model.dart';
+import 'package:fdp/features/checkout/providers/address_provider.dart';
 import 'package:fdp/core/providers/location_provider.dart';
 import 'package:fdp/features/orders/providers/order_provider.dart';
 import 'package:fdp/core/widgets/badges/diet_marker.dart';
@@ -113,15 +116,43 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
 
     final locationState = ref.read(locationProvider);
-    final selectedAddr = locationState.selectedAddress;
-    final address = selectedAddr?.fullAddress ??
-        selectedAddr?.title ??
-        'Hazratganj, Lucknow, UP';
+    final savedAddresses = ref.read(addressListProvider);
+    final selectedAddr = locationState.selectedAddress ??
+        savedAddresses.where((a) => a.isDefault).firstOrNull ??
+        savedAddresses.firstOrNull;
+
+    if (selectedAddr == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please add or select a delivery address to proceed.'),
+            backgroundColor: AppColors.accent,
+          ),
+        );
+        context.push('/address-selection');
+      }
+      return;
+    }
+
+    final address = selectedAddr.fullAddress.isNotEmpty
+        ? selectedAddr.fullAddress
+        : selectedAddr.title;
+
+    final userNote = _noteController.text.trim();
+    final effectiveInstructions = userNote.isNotEmpty
+        ? userNote
+        : (selectedAddr.deliveryInstructions?.trim().isNotEmpty == true
+            ? selectedAddr.deliveryInstructions!.trim()
+            : 'Call when you reach gate');
 
     if (_selectedPaymentMethod == PaymentMethodType.cod) {
       // Direct Cash on Delivery placement
       setState(() => _isProcessing = true);
-      await _placeCodOrderAndNavigate(address: address);
+      await _placeCodOrderAndNavigate(
+        selectedAddr: selectedAddr,
+        address: address,
+        instructions: effectiveInstructions,
+      );
     } else {
       // Online Payment (2-Step Lifecycle: Checkout -> Initiate -> Gateway -> Verify)
       setState(() => _isProcessing = true);
@@ -129,28 +160,42 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
       try {
         // Step 1: Create Order on backend with ONLINE mode (PAYMENT_PENDING)
+        final checkoutIdempotencyKey = IdempotencyUtils.generateKey();
         final createdOrder = await ref.read(orderProvider.notifier).placeOrder(
               cart: cart,
               paymentMethod: _selectedPaymentMethod,
               deliveryAddress: address,
-              addressId: selectedAddr?.id,
-              deliveryInstructions: _noteController.text.trim(),
+              addressId: selectedAddr.id,
+              deliveryInstructions: effectiveInstructions,
+              idempotencyKey: checkoutIdempotencyKey,
             );
 
         _pendingOrderId = createdOrder.orderId;
 
         // Step 2: Initiate Payment Order with Gateway
+        final paymentIdempotencyKey = IdempotencyUtils.generateKey();
         final initData = await ref
             .read(orderProvider.notifier)
-            .initiateOnlinePayment(createdOrder.orderId);
+            .initiateOnlinePayment(
+              createdOrder.orderId,
+              idempotencyKey: paymentIdempotencyKey,
+            );
 
-        _pendingGatewayOrderId = initData['gatewayOrderId']?.toString();
-        final String? keyId = initData['keyId']?.toString();
-        final int? amountPaise = (initData['amountPaise'] as num?)?.toInt();
+        _pendingGatewayOrderId = initData['gatewayOrderId']?.toString() ??
+            initData['razorpayOrderId']?.toString() ??
+            initData['orderId']?.toString() ??
+            initData['id']?.toString();
+        final String? rawKeyId = initData['keyId']?.toString();
+        final String? keyId = (rawKeyId != null && !rawKeyId.toLowerCase().contains('mock'))
+            ? rawKeyId
+            : (initData['razorpayKeyId']?.toString() ??
+                initData['key']?.toString());
+        final int? amountPaise = (initData['amountPaise'] as num?)?.toInt() ??
+            (initData['amount'] as num?)?.toInt();
 
         if (!mounted) return;
 
-        // Step 3: Open Razorpay sheet
+        // Step 3: Open Razorpay checkout dialog
         await _razorpayService.openCheckout(
           context: context,
           amountRupees: cart.grandTotal,
@@ -170,6 +215,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       } catch (e) {
         if (!mounted) return;
         setState(() => _isProcessing = false);
+        _pendingOrderId = null;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Could not initiate online payment: $e'),
@@ -180,18 +226,20 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
   }
 
-  Future<void> _placeCodOrderAndNavigate({required String address}) async {
+  Future<void> _placeCodOrderAndNavigate({
+    required AddressModel selectedAddr,
+    required String address,
+    required String instructions,
+  }) async {
     final cart = ref.read(cartProvider);
-    final locationState = ref.read(locationProvider);
-    final selectedAddr = locationState.selectedAddress;
 
     try {
       final createdOrder = await ref.read(orderProvider.notifier).placeOrder(
             cart: cart,
             paymentMethod: PaymentMethodType.cod,
             deliveryAddress: address,
-            addressId: selectedAddr?.id,
-            deliveryInstructions: _noteController.text.trim(),
+            addressId: selectedAddr.id,
+            deliveryInstructions: instructions,
           );
 
       // Empty the cart after successful order creation
@@ -218,7 +266,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Widget build(BuildContext context) {
     final cart = ref.watch(cartProvider);
     final locationState = ref.watch(locationProvider);
-    final selectedAddress = locationState.selectedAddress;
+    final savedAddresses = ref.watch(addressListProvider);
+    final selectedAddress = locationState.selectedAddress ??
+        savedAddresses.where((a) => a.isDefault).firstOrNull ??
+        savedAddresses.firstOrNull;
+
+    if (locationState.selectedAddress == null && selectedAddress != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && ref.read(locationProvider).selectedAddress == null) {
+          ref.read(locationProvider.notifier).selectAddress(selectedAddress);
+        }
+      });
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -237,36 +296,81 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   // 1. Delivery Address Card
                   _buildSectionCard(
                     title: 'Delivery Address',
-                    actionLabel: 'Change',
+                    actionLabel: selectedAddress != null ? 'Change' : 'Add Address',
                     onAction: () => context.push('/address-selection'),
-                    content: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.location_on,
-                              color: AppColors.accent,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                selectedAddress?.title ??
-                                    'Hazratganj, Lucknow (Default)',
-                                style: AppTypography.itemName,
+                    content: selectedAddress != null
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_on,
+                                    color: AppColors.accent,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      selectedAddress.title.isNotEmpty
+                                          ? selectedAddress.title
+                                          : 'Delivery Address',
+                                      style: AppTypography.itemName,
+                                    ),
+                                  ),
+                                  if (selectedAddress.isDefault)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryTint20,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'DEFAULT',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          selectedAddress?.fullAddress ??
-                              'Near GPO, Hazratganj, Lucknow, Uttar Pradesh 226001',
-                          style: AppTypography.bodySmall,
-                        ),
-                      ],
-                    ),
+                              const SizedBox(height: 4),
+                              Text(
+                                selectedAddress.fullAddress,
+                                style: AppTypography.bodySmall,
+                              ),
+                              if (selectedAddress.deliveryInstructions?.isNotEmpty == true) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Note: ${selectedAddress.deliveryInstructions}',
+                                  style: AppTypography.caption,
+                                ),
+                              ],
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              const Icon(
+                                Icons.add_location_alt_outlined,
+                                color: AppColors.accent,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'No delivery address selected. Tap to add or select.',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.accent,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
 
                   const SizedBox(height: 12),

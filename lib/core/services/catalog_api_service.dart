@@ -23,6 +23,7 @@ class CatalogApiService {
     if (category != null && category.isNotEmpty) qp['category'] = category;
     if (dietaryType != null && dietaryType.isNotEmpty) {
       qp['dietaryType'] = dietaryType;
+      qp['dietary'] = dietaryType;
     }
     if (search != null && search.isNotEmpty) qp['search'] = search;
     if (isFeatured != null) qp['isFeatured'] = isFeatured;

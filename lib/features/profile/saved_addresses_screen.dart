@@ -105,28 +105,41 @@ class SavedAddressesScreen extends ConsumerWidget {
                                   size: 20,
                                 ),
                                 const SizedBox(width: 8),
-                                Text(addr.title, style: AppTypography.itemName),
-                                if (addr.isDefault) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryTint20,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'DEFAULT',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          addr.title,
+                                          style: AppTypography.itemName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                    ),
+                                      if (addr.isDefault) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primaryTint20,
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            'DEFAULT',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ],
-                                const Spacer(),
+                                ),
                                 PopupMenuButton<String>(
                                   onSelected: (val) async {
                                     if (val == 'default') {

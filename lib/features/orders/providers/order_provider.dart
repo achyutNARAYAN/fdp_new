@@ -235,8 +235,11 @@ class OrderNotifier extends StateNotifier<OrderState> {
   }
 
   /// Step 1: Initiate payment order on gateway
-  Future<Map<String, dynamic>> initiateOnlinePayment(String orderId) async {
-    return await _api.initiatePayment(orderId);
+  Future<Map<String, dynamic>> initiateOnlinePayment(
+    String orderId, {
+    String? idempotencyKey,
+  }) async {
+    return await _api.initiatePayment(orderId, idempotencyKey: idempotencyKey);
   }
 
   /// Step 2: Verify payment signature and confirm order

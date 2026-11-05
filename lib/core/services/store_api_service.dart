@@ -1,3 +1,4 @@
+
 import '../network/api_client.dart';
 import '../constants/api_constants.dart';
 import 'package:fdp/features/item/models/shop_model.dart';
@@ -34,7 +35,8 @@ class StoreApiService {
     return const DiscoveryFeedModel();
   }
 
-  /// Fetch stores with proximity or category filter via discovery feed
+  /// Fetch stores with proximity or category filter via discovery feed,
+  /// with robust fallback to /stores catalog endpoint
   Future<List<ShopModel>> getStores({
     String? category,
     String? status,
@@ -46,17 +48,84 @@ class StoreApiService {
     int? page,
     int? limit,
   }) async {
-    final double lng = nearLng ?? 77.089;
-    final double lat = nearLat ?? 28.490;
+    // 1. If coordinates are provided, try Hyperlocal discovery feed first
+    if (nearLng != null && nearLat != null) {
+      try {
+        final feed = await getDiscoveryFeed(
+          lng: nearLng,
+          lat: nearLat,
+          category: category,
+          search: search,
+        );
+        if (feed.allStores.isNotEmpty) {
+          return feed.allStores;
+        }
+      } catch (_) {}
+    }
 
-    final feed = await getDiscoveryFeed(
-      lng: lng,
-      lat: lat,
-      category: category,
-      search: search,
-    );
+    // 2. Query all catalog stores from /stores
+    final qp = <String, dynamic>{};
+    if (page != null) qp['page'] = page;
+    if (limit != null) qp['limit'] = limit;
+    if (category != null && category.isNotEmpty) qp['category'] = category;
+    if (status != null && status.isNotEmpty) qp['status'] = status;
+    if (search != null && search.isNotEmpty) qp['search'] = search;
+    if (nearLng != null) qp['nearLng'] = nearLng;
+    if (nearLat != null) qp['nearLat'] = nearLat;
+    if (maxDistanceKm != null) qp['maxDistanceKm'] = maxDistanceKm;
+    if (isAcceptingOrders != null) qp['isAcceptingOrders'] = isAcceptingOrders;
 
-    return feed.allStores;
+    try {
+      final res = await _client.get(
+        '/stores',
+        queryParams: qp.isNotEmpty ? qp : null,
+      );
+
+      List<dynamic> list = [];
+      if (res.data is List) {
+        list = res.data as List;
+      } else if (res.data is Map<String, dynamic>) {
+        final map = res.data as Map<String, dynamic>;
+        final possible = map['stores'] ?? map['data'] ?? map['results'];
+        if (possible is List) list = possible;
+      }
+
+      if (list.isNotEmpty) {
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map((e) => ShopModel.fromApiJson(e))
+            .toList();
+      }
+
+      // If geo-filtered query returned nothing, retry without location
+      // so the user always sees the full catalog of stores.
+      if (nearLng != null || nearLat != null) {
+        final fallbackQp = Map<String, dynamic>.of(qp)
+          ..remove('nearLng')
+          ..remove('nearLat')
+          ..remove('maxDistanceKm');
+        final fbRes = await _client.get(
+          '/stores',
+          queryParams: fallbackQp.isNotEmpty ? fallbackQp : null,
+        );
+        List<dynamic> fbList = [];
+        if (fbRes.data is List) {
+          fbList = fbRes.data as List;
+        } else if (fbRes.data is Map<String, dynamic>) {
+          final map = fbRes.data as Map<String, dynamic>;
+          final possible = map['stores'] ?? map['data'] ?? map['results'];
+          if (possible is List) fbList = possible;
+        }
+        if (fbList.isNotEmpty) {
+          return fbList
+              .whereType<Map<String, dynamic>>()
+              .map((e) => ShopModel.fromApiJson(e))
+              .toList();
+        }
+      }
+    } catch (_) {}
+
+    return <ShopModel>[];
   }
 
   /// Get single store public profile
@@ -127,25 +196,36 @@ class StoreApiService {
   }) async {
     final qp = <String, dynamic>{
       'query': query,
-      'lng': lng ?? 77.089,
-      'lat': lat ?? 28.490,
+      'lng': lng ?? 77.088,
+      'lat': lat ?? 28.489,
     };
     if (category != null && category.isNotEmpty) qp['category'] = category;
     if (dietaryType != null && dietaryType.isNotEmpty) {
       qp['dietaryType'] = dietaryType;
     }
 
-    final res = await _client.get(
-      ApiConstants.storesCustomerSearch,
-      queryParams: qp,
-    );
-    if (res.data is List) {
-      return (res.data as List)
+    try {
+      final res = await _client.get(
+        ApiConstants.storesCustomerSearch,
+        queryParams: qp,
+      );
+
+      List<dynamic> resultsList = [];
+      if (res.data is List) {
+        resultsList = res.data as List;
+      } else if (res.data is Map<String, dynamic>) {
+        final map = res.data as Map<String, dynamic>;
+        final possible = map['results'] ?? map['data'];
+        if (possible is List) resultsList = possible;
+      }
+
+      return resultsList
           .whereType<Map<String, dynamic>>()
           .map((e) => ShopWiseSearchResult.fromApi(e))
           .toList();
+    } catch (_) {
+      return const [];
     }
-    return const [];
   }
 
   /// Search dishes across stores

@@ -1,0 +1,3274 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Food Delivery Platform (FDP) \u2014 Customer Mobile App API",
+    "version": "1.0.0",
+    "description": "## \ud83d\udcf1 FDP Customer Mobile App REST & WebSocket API Documentation\n\nWelcome to the comprehensive API documentation for the **Food Delivery Platform (FDP) Customer App** (Flutter iOS & Android).\n\nThis documentation provides the **exact contracts, schemas, parameters, and live WebSocket protocols** required to build the complete Flutter Customer mobile application.\n\n---\n\n### \ud83d\ude80 Quick Start for Flutter Developers\n\n1. **Base URL Prefix:** All REST API endpoints must be prefixed with `/api/v1`.\n2. **Standard Authentication Header:** For all protected endpoints, pass the customer access token:\n   ```http\n   Authorization: Bearer <CUSTOMER_JWT_ACCESS_TOKEN>\n   ```\n3. **Paise Integer Currency Convention:** All prices are tracked in **whole paise** (`\u20b91.00 = 100 paise`) to eliminate floating-point rounding errors:\n   - `\u20b9249.50` is represented as `24950`\n   - To display in Flutter: `\"\u20b9${(pricePaise / 100).toStringAsFixed(2)}\"`\n4. **Standard Response Envelopes:**\n   - **Success (Single Resource):** `{ \"success\": true, \"data\": { ... } }`\n   - **Success (Paginated List):** `{ \"success\": true, \"data\": [ ... ], \"meta\": { \"page\": 1, \"limit\": 20, \"total\": 45, \"totalPages\": 3, \"hasNext\": true, \"hasPrev\": false } }`\n   - **Error (Client / Server):** `{ \"success\": false, \"error\": { \"code\": \"VALIDATION_FAILED\", \"message\": \"...\", \"requestId\": \"req_...\" } }`\n\n---\n\n### \ud83c\udf10 Server Environments\n- **Live Cloud Production (Render):** `https://fdp-tkl0.onrender.com/api/v1`\n- **Local Development:** `http://localhost:4000/api/v1`\n- **WebSocket Gateway:** `wss://fdp-tkl0.onrender.com/ws` (or `ws://localhost:4000/ws`)\n",
+    "contact": {
+      "name": "FDP Engineering Support",
+      "email": "flutter-dev@fdp.delivery"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://fdp-tkl0.onrender.com/api/v1",
+      "description": "Live Production Cloud Server"
+    },
+    {
+      "url": "http://localhost:4000/api/v1",
+      "description": "Local Development Server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "1. Customer Authentication",
+      "description": "Passwordless Email OTP, Google OAuth2, registration completion & session logout"
+    },
+    {
+      "name": "2. Customer Profile & Addresses",
+      "description": "Customer account details and doorstep delivery address book with GeoJSON Indian coordinates"
+    },
+    {
+      "name": "3. Store & Dish Discovery",
+      "description": "Distance-tiered discovery feed (0-2km, 2-4km, 4-8km), shop-wise dish search, single store details & menus"
+    },
+    {
+      "name": "4. Shopping Cart Engine",
+      "description": "Pricing waterfall calculations, item quantity modifications, coupons, tips & addresses"
+    },
+    {
+      "name": "5. Orders & Checkout Lifecycle",
+      "description": "Order placement with 120s checkout lock, order history, single order timeline & cancellation"
+    },
+    {
+      "name": "6. Payment Gateway (Razorpay & UPI)",
+      "description": "Online Razorpay checkout orders, HMAC SHA256 verification & doorstep dynamic UPI QR"
+    },
+    {
+      "name": "7. Real-Time Tracking & WebSocket",
+      "description": "Duplex WebSocket streaming for live order room updates and driver GPS coordinates"
+    },
+    {
+      "name": "8. Reviews & Ratings",
+      "description": "Customer feedback, star ratings for stores and drivers, item recommendations & upvotes"
+    },
+    {
+      "name": "9. Push Notifications & Inbox",
+      "description": "FCM device push token registration, in-app notification inbox & unread badge counters"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "CustomerBearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter Customer JWT Bearer token obtained from `/customers/auth/verify-otp` or `/customers/auth/google`."
+      }
+    },
+    "schemas": {
+      "StandardError": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "VALIDATION_FAILED"
+              },
+              "message": {
+                "type": "string",
+                "example": "Invalid request payload"
+              },
+              "requestId": {
+                "type": "string",
+                "example": "req_f8b2413a9"
+              }
+            }
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "example": 20
+          },
+          "total": {
+            "type": "integer",
+            "example": 45
+          },
+          "totalPages": {
+            "type": "integer",
+            "example": 3
+          },
+          "hasNext": {
+            "type": "boolean",
+            "example": true
+          },
+          "hasPrev": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "Coordinates": {
+        "type": "array",
+        "description": "GeoJSON [longitude, latitude] within Indian geographic boundaries (68\u00b0\u201397.5\u00b0E, 6\u00b0\u201337.5\u00b0N)",
+        "items": {
+          "type": "number"
+        },
+        "minItems": 2,
+        "maxItems": 2,
+        "example": [
+          77.089,
+          28.49
+        ]
+      },
+      "CustomerAddress": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "6512bd34a1b2c3d4e5f67890"
+          },
+          "label": {
+            "type": "string",
+            "enum": [
+              "HOME",
+              "WORK",
+              "FRIENDS_AND_FAMILY",
+              "OTHER"
+            ],
+            "example": "HOME"
+          },
+          "recipientName": {
+            "type": "string",
+            "example": "Amit Sharma"
+          },
+          "recipientPhone": {
+            "type": "string",
+            "example": "9876543210"
+          },
+          "houseNumber": {
+            "type": "string",
+            "example": "Flat 402, Tower B"
+          },
+          "streetArea": {
+            "type": "string",
+            "example": "DLF Phase 4, Galleria Road"
+          },
+          "landmark": {
+            "type": "string",
+            "example": "Opposite Supermart 1"
+          },
+          "city": {
+            "type": "string",
+            "example": "Gurugram"
+          },
+          "state": {
+            "type": "string",
+            "example": "Haryana"
+          },
+          "pincode": {
+            "type": "string",
+            "example": "122002"
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "example": true
+          },
+          "deliveryInstructions": {
+            "type": "string",
+            "example": "Ring the bell once, leave at door if no response"
+          }
+        }
+      },
+      "CartPricing": {
+        "type": "object",
+        "properties": {
+          "itemTotalPaise": {
+            "type": "integer",
+            "description": "Food items subtotal in paise",
+            "example": 45000
+          },
+          "packagingFeePaise": {
+            "type": "integer",
+            "description": "Restaurant packaging fee in paise",
+            "example": 2000
+          },
+          "deliveryFeePaise": {
+            "type": "integer",
+            "description": "Delivery partner fee in paise (waived on orders >= \u20b9500)",
+            "example": 4000
+          },
+          "platformFeePaise": {
+            "type": "integer",
+            "description": "Standard platform convenience fee in paise",
+            "example": 1000
+          },
+          "foodGstPaise": {
+            "type": "integer",
+            "description": "5% Section 9(5) CGST/SGST food tax in paise",
+            "example": 2250
+          },
+          "serviceGstPaise": {
+            "type": "integer",
+            "description": "18% GST on packaging and platform fee in paise",
+            "example": 540
+          },
+          "taxesPaise": {
+            "type": "integer",
+            "description": "Total combined taxes in paise",
+            "example": 2790
+          },
+          "discountPaise": {
+            "type": "integer",
+            "description": "Total promo coupon discount in paise",
+            "example": 10000
+          },
+          "tipPaise": {
+            "type": "integer",
+            "description": "Optional delivery driver tip in paise",
+            "example": 2000
+          },
+          "grandTotalPaise": {
+            "type": "integer",
+            "description": "Final payable amount in paise",
+            "example": 46790
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/customers/auth/request-otp": {
+      "post": {
+        "tags": [
+          "1. Customer Authentication"
+        ],
+        "summary": "Request Email OTP",
+        "description": "Sends a 6-digit numeric verification OTP to the customer's email address for passwordless sign-in. Rate-limited to 5 requests per 10 minutes per IP.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "customer@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP dispatched successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "message": "OTP sent successfully to email"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid email format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (too many OTP requests)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers/auth/verify-otp": {
+      "post": {
+        "tags": [
+          "1. Customer Authentication"
+        ],
+        "summary": "Verify Email OTP",
+        "description": "Validates the 6-digit OTP.\n- If user already exists: returns active `token` and `customer` profile.\n- If user is brand new: returns `isNewUser: true` and temporary `registrationToken` for step 2 registration.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "otp"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "customer@example.com"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$",
+                    "example": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication verified",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "existingUser": {
+                    "summary": "Existing customer (Login successful)",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "customer": {
+                          "id": "6512bd34a1b2c3d4e5f67890",
+                          "name": "Rahul Sharma",
+                          "email": "customer@example.com",
+                          "phone": "9876543210",
+                          "status": "ACTIVE"
+                        }
+                      }
+                    }
+                  },
+                  "newUser": {
+                    "summary": "New customer (Registration required)",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "isNewUser": true,
+                        "registrationToken": "reg_eyJhbGciOiJIUzI1Ni...",
+                        "customerId": "6512bd34a1b2c3d4e5f67890"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or expired OTP",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers/auth/complete-registration": {
+      "post": {
+        "tags": [
+          "1. Customer Authentication"
+        ],
+        "summary": "Complete New Customer Registration",
+        "description": "Submits name and 10-digit Indian phone number along with the `registrationToken` received from OTP verification. Issues the permanent customer Bearer JWT.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "registrationToken",
+                  "customerId",
+                  "name",
+                  "phone"
+                ],
+                "properties": {
+                  "registrationToken": {
+                    "type": "string",
+                    "example": "reg_eyJhbGciOiJIUzI1Ni..."
+                  },
+                  "customerId": {
+                    "type": "string",
+                    "example": "6512bd34a1b2c3d4e5f67890"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100,
+                    "example": "Rahul Sharma"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "pattern": "^[6-9][0-9]{9}$",
+                    "example": "9876543210"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration completed successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "customer": {
+                      "id": "6512bd34a1b2c3d4e5f67890",
+                      "name": "Rahul Sharma",
+                      "email": "customer@example.com",
+                      "phone": "9876543210",
+                      "status": "ACTIVE"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid registration token or malformed phone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers/auth/google": {
+      "post": {
+        "tags": [
+          "1. Customer Authentication"
+        ],
+        "summary": "Continue with Google OAuth2",
+        "description": "Verifies the cryptographic Google ID Token signature and audience via official Google Auth client. Automatically logs in existing user or provisions new customer account.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "idToken"
+                ],
+                "properties": {
+                  "idToken": {
+                    "type": "string",
+                    "description": "Google OAuth ID token from Flutter google_sign_in package",
+                    "example": "eyJhbGciOiJSUzI1NiIsImtpZCI6..."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Google authentication verified",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "customer": {
+                      "id": "6512bd34a1b2c3d4e5f67890",
+                      "name": "Rahul Sharma",
+                      "email": "customer@gmail.com",
+                      "phone": null,
+                      "status": "ACTIVE"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid Google token signature or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers/auth/logout": {
+      "post": {
+        "tags": [
+          "1. Customer Authentication"
+        ],
+        "summary": "Customer Logout",
+        "description": "Revokes the active Bearer JWT by recording its JTI/hash into the Redis blacklist until its natural expiration. Also unregisters device push notifications.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "message": "Logged out successfully"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers/me/profile": {
+      "get": {
+        "tags": [
+          "2. Customer Profile & Addresses"
+        ],
+        "summary": "Get My Profile",
+        "description": "Returns the profile details of the authenticated customer.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer profile retrieved",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "id": "6512bd34a1b2c3d4e5f67890",
+                    "name": "Rahul Sharma",
+                    "email": "customer@example.com",
+                    "phone": "9876543210",
+                    "status": "ACTIVE",
+                    "createdAt": "2026-03-15T10:30:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "2. Customer Profile & Addresses"
+        ],
+        "summary": "Update My Profile",
+        "description": "Updates full name or Indian mobile phone number for the authenticated customer.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100,
+                    "example": "Rahul K. Sharma"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "pattern": "^[6-9][0-9]{9}$",
+                    "example": "9876543211"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "id": "6512bd34a1b2c3d4e5f67890",
+                    "name": "Rahul K. Sharma",
+                    "email": "customer@example.com",
+                    "phone": "9876543211"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers/me/addresses": {
+      "get": {
+        "tags": [
+          "2. Customer Profile & Addresses"
+        ],
+        "summary": "List Saved Delivery Addresses",
+        "description": "Returns all saved doorstep delivery addresses for the logged-in customer.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Addresses retrieved",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": [
+                    {
+                      "_id": "6512bd34a1b2c3d4e5f67890",
+                      "label": "HOME",
+                      "recipientName": "Rahul Sharma",
+                      "recipientPhone": "9876543210",
+                      "houseNumber": "Flat 402, Tower B",
+                      "streetArea": "DLF Phase 4, Galleria Road",
+                      "landmark": "Opposite Supermart 1",
+                      "city": "Gurugram",
+                      "state": "Haryana",
+                      "pincode": "122002",
+                      "coordinates": [
+                        77.089,
+                        28.49
+                      ],
+                      "isDefault": true,
+                      "deliveryInstructions": "Ring bell once"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "2. Customer Profile & Addresses"
+        ],
+        "summary": "Add New Delivery Address",
+        "description": "Saves a new delivery address with mandatory GeoJSON Indian coordinates `[longitude, latitude]`, house details, and 6-digit PIN code.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "houseNumber",
+                  "streetArea",
+                  "city",
+                  "state",
+                  "pincode",
+                  "coordinates"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "enum": [
+                      "HOME",
+                      "WORK",
+                      "FRIENDS_AND_FAMILY",
+                      "OTHER"
+                    ],
+                    "default": "HOME"
+                  },
+                  "recipientName": {
+                    "type": "string",
+                    "example": "Rahul Sharma"
+                  },
+                  "recipientPhone": {
+                    "type": "string",
+                    "example": "9876543210"
+                  },
+                  "houseNumber": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "example": "Flat 402, Tower B"
+                  },
+                  "streetArea": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 200,
+                    "example": "DLF Phase 4, Galleria Road"
+                  },
+                  "landmark": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "example": "Opposite Supermart 1"
+                  },
+                  "city": {
+                    "type": "string",
+                    "example": "Gurugram"
+                  },
+                  "state": {
+                    "type": "string",
+                    "example": "Haryana"
+                  },
+                  "pincode": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]{5}$",
+                    "example": "122002"
+                  },
+                  "coordinates": {
+                    "$ref": "#/components/schemas/Coordinates"
+                  },
+                  "isDefault": {
+                    "type": "boolean",
+                    "default": false,
+                    "example": true
+                  },
+                  "deliveryInstructions": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "Leave with security if not home"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Address created",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "_id": "6512bd34a1b2c3d4e5f67890",
+                    "label": "HOME",
+                    "houseNumber": "Flat 402, Tower B",
+                    "streetArea": "DLF Phase 4, Galleria Road",
+                    "city": "Gurugram",
+                    "state": "Haryana",
+                    "pincode": "122002",
+                    "coordinates": [
+                      77.089,
+                      28.49
+                    ],
+                    "isDefault": true
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or coordinates outside India",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers/me/addresses/{addressId}": {
+      "patch": {
+        "tags": [
+          "2. Customer Profile & Addresses"
+        ],
+        "summary": "Update Saved Address",
+        "description": "Modifies fields of an existing delivery address belonging to the authenticated customer.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "addressId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67890"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "houseNumber": {
+                    "type": "string"
+                  },
+                  "streetArea": {
+                    "type": "string"
+                  },
+                  "landmark": {
+                    "type": "string"
+                  },
+                  "deliveryInstructions": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Address updated",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "_id": "6512bd34a1b2c3d4e5f67890",
+                    "houseNumber": "Flat 402, Tower B (Renovated)"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Address not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "2. Customer Profile & Addresses"
+        ],
+        "summary": "Delete Saved Address",
+        "description": "Removes an address from the customer's address book.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "addressId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67890"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Address deleted successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "message": "Address deleted successfully"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers/me/addresses/{addressId}/default": {
+      "patch": {
+        "tags": [
+          "2. Customer Profile & Addresses"
+        ],
+        "summary": "Set Address as Default",
+        "description": "Sets the selected address as the primary default delivery location for future checkouts.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "addressId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67890"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default address updated",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "message": "Default address updated successfully"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stores/discovery/feed": {
+      "get": {
+        "tags": [
+          "3. Store & Dish Discovery"
+        ],
+        "summary": "Hyperlocal Tiered Discovery Feed (Home Screen)",
+        "description": "Powers the Customer App home screen feed. Groups open and accepting shops into 3 hyper-local distance tiers:\n- **Tier 1 (0-2 km):** Fastest delivery (~20-25 mins, \u20b930 delivery fee)\n- **Tier 2 (2-4 km):** Standard neighborhood (~30-35 mins, \u20b945 delivery fee)\n- **Tier 3 (4-8 km):** Extended city (~45-55 mins, \u20b965 delivery fee)\n- **Iconic Halwais:** Celebrated heritage sweet shops with rating >= 4.5\n\nAll confidential merchant data (bank accounts, commission, tax numbers) are automatically stripped.",
+        "parameters": [
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            },
+            "example": 77.089,
+            "description": "Customer device GPS longitude"
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            },
+            "example": 28.49,
+            "description": "Customer device GPS latitude"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SWEET_SHOP",
+                "RESTAURANT",
+                "CLOUD_KITCHEN",
+                "ICE_CREAM_PARLOUR",
+                "BAKERY_DESSERTS",
+                "SNACKS_NAMKEEN",
+                "FAST_FOOD_SNACKS",
+                "BEVERAGES_CAFE"
+              ]
+            },
+            "example": "SWEET_SHOP"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Bikaner",
+            "description": "Optional store name filter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Discovery feed retrieved",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "tier1": [
+                      {
+                        "id": "6512bd34a1b2c3d4e5f67890",
+                        "name": "Bikaner Sweets & Namkeen",
+                        "category": "SWEET_SHOP",
+                        "rating": 4.6,
+                        "reviewCount": 142,
+                        "distanceKm": 1.2,
+                        "distanceTier": "TIER_1",
+                        "deliveryFeePaise": 3000,
+                        "estimatedDeliveryMinutes": 25,
+                        "isOpen": true,
+                        "isAcceptingOrders": true,
+                        "address": {
+                          "streetArea": "Galleria Market",
+                          "city": "Gurugram"
+                        },
+                        "bannerUrl": "https://images.unsplash.com/photo-1541832676-9b763b0239ab"
+                      }
+                    ],
+                    "tier2": [],
+                    "tier3": [],
+                    "iconicHalwais": []
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid coordinates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stores/customer/search": {
+      "get": {
+        "tags": [
+          "3. Store & Dish Discovery"
+        ],
+        "summary": "Global Dish Search (Shop-Wise Grouped)",
+        "description": "Searches for a specific sweet, dish, or namkeen (e.g. 'Gulab Jamun', 'Kaju Katli', 'Samosa') across all nearby stores within service radius. Results are grouped **shop-wise, sorted nearest shop first**, exactly like top food delivery apps.",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "Gulab Jamun",
+            "description": "Food item or sweet name to search"
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            },
+            "example": 77.089
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            },
+            "example": 28.49
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "example": "SWEET_SHOP"
+          },
+          {
+            "name": "dietaryType",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "VEG",
+                "NON_VEG",
+                "EGG",
+                "VEGAN"
+              ]
+            },
+            "example": "VEG"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results grouped shop-wise",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": [
+                    {
+                      "store": {
+                        "id": "6512bd34a1b2c3d4e5f67890",
+                        "name": "Bikaner Sweets & Namkeen",
+                        "distanceKm": 1.2,
+                        "estimatedDeliveryMinutes": 25,
+                        "deliveryFeePaise": 3000,
+                        "rating": 4.6
+                      },
+                      "matchingItems": [
+                        {
+                          "menuItemId": "6512bd34a1b2c3d4e5f67895",
+                          "name": "Gulab Jamun (Desi Ghee)",
+                          "description": "Traditional soft khoya dumplings soaked in saffron sugar syrup",
+                          "unit": "PIECE",
+                          "customerPricePaise": 4000,
+                          "isInStock": true,
+                          "imageUrl": "https://images.unsplash.com/photo-1541832676-9b763b0239ab"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stores/customer/{id}": {
+      "get": {
+        "tags": [
+          "3. Store & Dish Discovery"
+        ],
+        "summary": "Get Single Store Profile",
+        "description": "Returns the public profile of a sweet shop or restaurant. Automatically strips internal merchant bank accounts, FSSAI license numbers, owner phone, and commission agreements.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67890"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Store profile",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "id": "6512bd34a1b2c3d4e5f67890",
+                    "name": "Bikaner Sweets & Namkeen",
+                    "category": "SWEET_SHOP",
+                    "rating": 4.6,
+                    "reviewCount": 142,
+                    "isOpen": true,
+                    "isAcceptingOrders": true,
+                    "serviceRadiusKm": 6,
+                    "address": {
+                      "streetArea": "Galleria Market",
+                      "city": "Gurugram",
+                      "pincode": "122002"
+                    },
+                    "location": {
+                      "coordinates": [
+                        77.085,
+                        28.485
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Store not found"
+          }
+        }
+      }
+    },
+    "/stores/customer/{id}/menu": {
+      "get": {
+        "tags": [
+          "3. Store & Dish Discovery"
+        ],
+        "summary": "Get Store Active Menu",
+        "description": "Returns the categorized menu of a store (e.g. Mithai, Bengali Sweets, Namkeen, Snacks). **Strictly strips wholesale storePricePaise to protect platform dual-pricing margins**; only `customerPricePaise` is exposed.\n\nPass `highlightItemId` to pin a dish searched by the user to the very top of the menu screen.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67890"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Mithai"
+          },
+          {
+            "name": "dietaryType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "example": "VEG"
+          },
+          {
+            "name": "isInStock",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            },
+            "example": true
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "example": "Kaju"
+          },
+          {
+            "name": "highlightItemId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67895"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Store menu items grouped by categories",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "store": {
+                      "id": "6512bd34a1b2c3d4e5f67890",
+                      "name": "Bikaner Sweets & Namkeen"
+                    },
+                    "categories": [
+                      "Bengali Sweets",
+                      "Ghee Mithai",
+                      "Namkeen & Snacks"
+                    ],
+                    "highlightedItem": null,
+                    "items": [
+                      {
+                        "_id": "6512bd34a1b2c3d4e5f67895",
+                        "name": "Kaju Katli (Silver Vark)",
+                        "description": "Diamond cut cashew fudge prepared with premium Goan cashews",
+                        "category": "Ghee Mithai",
+                        "dietaryType": "VEG",
+                        "isInStock": true,
+                        "imageUrl": "https://images.unsplash.com/photo-1541832676-9b763b0239ab",
+                        "pricing": [
+                          {
+                            "unit": "KG",
+                            "customerPricePaise": 95000
+                          },
+                          {
+                            "unit": "HALF_KG",
+                            "customerPricePaise": 49000
+                          },
+                          {
+                            "unit": "QUARTER_KG",
+                            "customerPricePaise": 25000
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/meta/categories": {
+      "get": {
+        "tags": [
+          "3. Store & Dish Discovery"
+        ],
+        "summary": "Get Master Food Taxonomy Metadata",
+        "description": "Returns global categories, dietary classifications (VEG, NON_VEG, EGG, VEGAN), measurement units (KG, HALF_KG, QUARTER_KG, PIECE, BOX, PLATE), and allergen tags.",
+        "responses": {
+          "200": {
+            "description": "Taxonomy metadata retrieved",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "categories": [
+                      "Mithai",
+                      "Bengali Sweets",
+                      "Dry Fruit Sweets",
+                      "Namkeen",
+                      "Bakery",
+                      "Ice Cream",
+                      "Chaat"
+                    ],
+                    "dietaryTypes": [
+                      "VEG",
+                      "NON_VEG",
+                      "EGG",
+                      "VEGAN"
+                    ],
+                    "measurementUnits": [
+                      "KG",
+                      "HALF_KG",
+                      "QUARTER_KG",
+                      "PIECE",
+                      "BOX",
+                      "PLATE",
+                      "PORTION",
+                      "PACKET",
+                      "SCOOP",
+                      "TUB",
+                      "LITRE",
+                      "ML"
+                    ],
+                    "allergenTags": [
+                      "DAIRY",
+                      "NUTS",
+                      "GLUTEN",
+                      "SOY"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog": {
+      "get": {
+        "tags": [
+          "3. Store & Dish Discovery"
+        ],
+        "summary": "Browse Central Food Catalog",
+        "description": "Lists standardized food and sweet items available across the platform.",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dietary",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalog items list",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": [
+                    {
+                      "_id": "6512bd34a1b2c3d4e5f67899",
+                      "code": "CAT-0012",
+                      "name": "Rasgulla",
+                      "category": "Bengali Sweets",
+                      "dietaryType": "VEG",
+                      "basePricePaise": 4000
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "limit": 20,
+                    "total": 110
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/{id}": {
+      "get": {
+        "tags": [
+          "3. Store & Dish Discovery"
+        ],
+        "summary": "Get Catalog Item Details",
+        "description": "Returns details of a single standardized catalog item by Mongo ID or code (e.g. CAT-0001).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67899"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalog item details",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "_id": "6512bd34a1b2c3d4e5f67899",
+                    "name": "Rasgulla",
+                    "description": "Spongy chhena balls cooked in light sugar syrup"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cart": {
+      "get": {
+        "tags": [
+          "4. Shopping Cart Engine"
+        ],
+        "summary": "Get Active Cart & Pricing Waterfall",
+        "description": "Calculates the live, real-time pricing breakdown for the authenticated customer's cart:\n- Food Subtotal (`itemTotalPaise`)\n- Flat Restaurant Packaging Fee (`packagingFeePaise` = \u20b920.00)\n- Distance Delivery Fee (`deliveryFeePaise` = \u20b940.00, **waived if subtotal >= \u20b9500**)\n- Platform Convenience Fee (`platformFeePaise` = \u20b910.00)\n- 5% Section 9(5) CGST/SGST Food Tax (`foodGstPaise`)\n- 18% Service GST on packaging and platform fee (`serviceGstPaise`)\n- Promo Coupon Discount (`discountPaise`)\n- Driver Tip (`tipPaise`)\n- Final Grand Total (`grandTotalPaise`)",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active cart retrieved",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "storeId": "6512bd34a1b2c3d4e5f67890",
+                    "storeName": "Bikaner Sweets & Namkeen",
+                    "items": [
+                      {
+                        "itemId": "6512bd34a1b2c3d4e5f67895_KG",
+                        "menuItemId": "6512bd34a1b2c3d4e5f67895",
+                        "name": "Kaju Katli (Silver Vark)",
+                        "unit": "KG",
+                        "quantity": 1,
+                        "unitPricePaise": 95000,
+                        "itemTotalPaise": 95000,
+                        "cookingInstructions": "Fresh batch please"
+                      }
+                    ],
+                    "pricing": {
+                      "itemTotalPaise": 95000,
+                      "packagingFeePaise": 2000,
+                      "deliveryFeePaise": 0,
+                      "platformFeePaise": 1000,
+                      "foodGstPaise": 4750,
+                      "serviceGstPaise": 540,
+                      "taxesPaise": 5290,
+                      "discountPaise": 10000,
+                      "tipPaise": 2000,
+                      "grandTotalPaise": 94290
+                    },
+                    "appliedCoupon": {
+                      "code": "WELCOME50",
+                      "description": "50% OFF up to \u20b9100 on orders above \u20b9199",
+                      "discountPaise": 10000
+                    },
+                    "deliveryAddressId": "6512bd34a1b2c3d4e5f67890",
+                    "deliveryInstructions": "Leave with security"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "4. Shopping Cart Engine"
+        ],
+        "summary": "Clear Active Cart",
+        "description": "Removes all items, coupons, and tips from the customer's active cart.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cart cleared",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "message": "Cart cleared successfully"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cart/items": {
+      "post": {
+        "tags": [
+          "4. Shopping Cart Engine"
+        ],
+        "summary": "Add Item to Cart",
+        "description": "Adds a food item to the shopping cart. Enforces the **Single-Restaurant Cart rule**.\n- If customer adds an item from Store B while Store A is in cart, the API returns a 409 Conflict with store details.\n- If customer confirms replacing cart, send `replaceCart: true` to discard previous items and add new dish.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "storeId",
+                  "menuItemId",
+                  "unit",
+                  "quantity"
+                ],
+                "properties": {
+                  "storeId": {
+                    "type": "string",
+                    "example": "6512bd34a1b2c3d4e5f67890"
+                  },
+                  "menuItemId": {
+                    "type": "string",
+                    "example": "6512bd34a1b2c3d4e5f67895"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "KG",
+                      "HALF_KG",
+                      "QUARTER_KG",
+                      "PIECE",
+                      "BOX",
+                      "PLATE",
+                      "PORTION",
+                      "PACKET",
+                      "SCOOP",
+                      "TUB",
+                      "LITRE",
+                      "ML"
+                    ],
+                    "example": "KG"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50,
+                    "default": 1,
+                    "example": 1
+                  },
+                  "cookingInstructions": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "Less sweet please"
+                  },
+                  "replaceCart": {
+                    "type": "boolean",
+                    "default": false,
+                    "example": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Item added to cart",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "storeId": "6512bd34a1b2c3d4e5f67890",
+                    "itemsCount": 1,
+                    "grandTotalPaise": 94290
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: Cart contains items from another store",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "DIFFERENT_STORE_CART",
+                    "message": "Your cart contains items from 'Bikaner Sweets'. Do you want to discard your cart and start a new order with 'Haldiram'?"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cart/items/{itemId}": {
+      "patch": {
+        "tags": [
+          "4. Shopping Cart Engine"
+        ],
+        "summary": "Update Cart Item Quantity",
+        "description": "Increments, decrements, or removes a cart item. **Setting quantity to 0 removes the item**.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67895_KG"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "quantity"
+                ],
+                "properties": {
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 50,
+                    "example": 2
+                  },
+                  "cookingInstructions": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "Extra sugar syrup"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cart item updated",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "grandTotalPaise": 184580
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "4. Shopping Cart Engine"
+        ],
+        "summary": "Remove Item from Cart",
+        "description": "Removes a specific item from the customer's cart.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67895_KG"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item removed",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "message": "Item removed from cart"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cart/coupon": {
+      "post": {
+        "tags": [
+          "4. Shopping Cart Engine"
+        ],
+        "summary": "Apply Promo Coupon",
+        "description": "Validates and applies a platform discount coupon to the cart.\n\n**Standard Available Coupons in Codebase:**\n- `WELCOME50`: 50% OFF up to \u20b9100 on orders above \u20b9199\n- `FLAT100`: Flat \u20b9100 OFF on orders above \u20b9399\n- `SWEET20`: 20% OFF up to \u20b9150 on orders above \u20b9299\n- `FREESHIP`: Waives \u20b940 delivery fee on orders above \u20b9249",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "example": "WELCOME50"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Coupon applied successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "appliedCoupon": {
+                      "code": "WELCOME50",
+                      "discountPaise": 10000
+                    },
+                    "grandTotalPaise": 94290
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid coupon code or minimum order amount not met",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "4. Shopping Cart Engine"
+        ],
+        "summary": "Remove Applied Coupon",
+        "description": "Removes currently applied promo coupon from cart.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coupon removed",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "message": "Coupon removed successfully"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cart/tip": {
+      "post": {
+        "tags": [
+          "4. Shopping Cart Engine"
+        ],
+        "summary": "Set Driver Tip",
+        "description": "Adds or modifies a tip for the delivery partner in whole paise (\u20b90 to \u20b9500, max 50000 paise).",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "tipPaise"
+                ],
+                "properties": {
+                  "tipPaise": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 50000,
+                    "example": 3000,
+                    "description": "Tip in paise (e.g. \u20b930 = 3000)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tip updated",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "tipPaise": 3000,
+                    "grandTotalPaise": 95290
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cart/address": {
+      "post": {
+        "tags": [
+          "4. Shopping Cart Engine"
+        ],
+        "summary": "Attach Delivery Address to Cart",
+        "description": "Selects the delivery destination from saved addresses and adds optional delivery instructions.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "addressId"
+                ],
+                "properties": {
+                  "addressId": {
+                    "type": "string",
+                    "example": "6512bd34a1b2c3d4e5f67890"
+                  },
+                  "deliveryInstructions": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "Do not ring bell, baby is sleeping"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Delivery address attached",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "deliveryAddressId": "6512bd34a1b2c3d4e5f67890"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/checkout": {
+      "post": {
+        "tags": [
+          "5. Orders & Checkout Lifecycle"
+        ],
+        "summary": "Place Order (Checkout)",
+        "description": "Transforms the active cart into a confirmed order. **Acquires an atomic 120-second lease lock** on the customer's cart to prevent race conditions.\n\n- Payment mode: `ONLINE` (Razorpay) or `COD` (Cash / Doorstep UPI on Delivery).\n- Supports client-generated `idempotencyKey` (UUIDv4) to prevent double ordering on mobile network retries.\n- Also accepts direct instant buy (`items`, `storeId`) bypassing the cart session.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "paymentMode"
+                ],
+                "properties": {
+                  "paymentMode": {
+                    "type": "string",
+                    "enum": [
+                      "ONLINE",
+                      "COD"
+                    ],
+                    "example": "ONLINE"
+                  },
+                  "deliveryAddressId": {
+                    "type": "string",
+                    "example": "6512bd34a1b2c3d4e5f67890"
+                  },
+                  "deliveryInstructions": {
+                    "type": "string",
+                    "example": "Call when you reach gate"
+                  },
+                  "idempotencyKey": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "example": "ord_uuid_89f7a21c4b"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order placed successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "order": {
+                      "id": "6512bd34a1b2c3d4e5f67900",
+                      "orderNumber": "FDP-20261105-0042",
+                      "status": "PAYMENT_PENDING",
+                      "pricing": {
+                        "grandTotalPaise": 94290
+                      },
+                      "payment": {
+                        "mode": "ONLINE",
+                        "status": "PENDING"
+                      },
+                      "createdAt": "2026-11-05T08:30:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Cart is locked by an ongoing checkout attempt. Please wait 120 seconds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/create": {
+      "post": {
+        "tags": [
+          "5. Orders & Checkout Lifecycle"
+        ],
+        "summary": "Place Order (Alias for /checkout)",
+        "description": "Direct mobile app alias for `/orders/checkout` with identical payload and behaviour.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/paths/~1orders~1checkout/post/requestBody"
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/paths/~1orders~1checkout/post/responses/201"
+          }
+        }
+      }
+    },
+    "/orders/my-orders": {
+      "get": {
+        "tags": [
+          "5. Orders & Checkout Lifecycle"
+        ],
+        "summary": "Customer Order History",
+        "description": "Returns paginated list of all past and active orders placed by the customer, sorted newest first.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CREATED",
+                "PAYMENT_PENDING",
+                "PAYMENT_CONFIRMED",
+                "RESTAURANT_ACCEPTED",
+                "PREPARING",
+                "FOOD_READY",
+                "DRIVER_ASSIGNED",
+                "DRIVER_AT_STORE",
+                "PICKED_UP",
+                "OUT_FOR_DELIVERY",
+                "ARRIVED_AT_CUSTOMER",
+                "DELIVERED",
+                "CANCELLED",
+                "REJECTED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Orders retrieved",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": [
+                    {
+                      "id": "6512bd34a1b2c3d4e5f67900",
+                      "orderNumber": "FDP-20261105-0042",
+                      "status": "DELIVERED",
+                      "store": {
+                        "id": "6512bd34a1b2c3d4e5f67890",
+                        "name": "Bikaner Sweets & Namkeen"
+                      },
+                      "itemsCount": 1,
+                      "itemsSummary": "Kaju Katli (Silver Vark) (1 KG)",
+                      "grandTotalPaise": 94290,
+                      "paymentMode": "ONLINE",
+                      "createdAt": "2026-11-05T08:30:00.000Z"
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "limit": 20,
+                    "total": 12,
+                    "totalPages": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{orderId}": {
+      "get": {
+        "tags": [
+          "5. Orders & Checkout Lifecycle"
+        ],
+        "summary": "Get Single Order Details & Live Status",
+        "description": "Returns comprehensive order timeline, store pickup location, assigned driver profile (name, phone, vehicle, live GPS), and the **4-digit customer delivery OTP (which is securely revealed ONLY when the status reaches `OUT_FOR_DELIVERY`)**.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67900"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order details",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "id": "6512bd34a1b2c3d4e5f67900",
+                    "orderNumber": "FDP-20261105-0042",
+                    "status": "OUT_FOR_DELIVERY",
+                    "deliveryOtp": "4829",
+                    "store": {
+                      "name": "Bikaner Sweets & Namkeen",
+                      "phone": "0124-4100200",
+                      "location": [
+                        77.085,
+                        28.485
+                      ]
+                    },
+                    "driver": {
+                      "id": "6512bd34a1b2c3d4e5f67999",
+                      "name": "Rajesh Kumar",
+                      "phone": "9812345678",
+                      "vehicleNumber": "HR-26-DK-9012",
+                      "currentLocation": [
+                        77.088,
+                        28.489
+                      ]
+                    },
+                    "items": [
+                      {
+                        "name": "Kaju Katli (Silver Vark)",
+                        "unit": "KG",
+                        "quantity": 1,
+                        "customerPricePaise": 95000,
+                        "itemTotalPaise": 95000
+                      }
+                    ],
+                    "pricing": {
+                      "grandTotalPaise": 94290
+                    },
+                    "statusHistory": [
+                      {
+                        "status": "CREATED",
+                        "timestamp": "2026-11-05T08:30:00.000Z"
+                      },
+                      {
+                        "status": "PAYMENT_CONFIRMED",
+                        "timestamp": "2026-11-05T08:31:00.000Z"
+                      },
+                      {
+                        "status": "RESTAURANT_ACCEPTED",
+                        "timestamp": "2026-11-05T08:32:00.000Z"
+                      },
+                      {
+                        "status": "FOOD_READY",
+                        "timestamp": "2026-11-05T08:45:00.000Z"
+                      },
+                      {
+                        "status": "PICKED_UP",
+                        "timestamp": "2026-11-05T08:48:00.000Z"
+                      },
+                      {
+                        "status": "OUT_FOR_DELIVERY",
+                        "timestamp": "2026-11-05T08:50:00.000Z"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found"
+          }
+        }
+      }
+    },
+    "/orders/{orderId}/cancel": {
+      "post": {
+        "tags": [
+          "5. Orders & Checkout Lifecycle"
+        ],
+        "summary": "Cancel Order",
+        "description": "Allows the customer to cancel an order **before cooking commences** (`CREATED`, `PAYMENT_PENDING`, or `PAYMENT_CONFIRMED`). If an online payment was captured, an automated Razorpay refund is triggered.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67900"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "reason"
+                ],
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 200,
+                    "example": "Selected wrong delivery address by mistake"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order cancelled successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "orderId": "6512bd34a1b2c3d4e5f67900",
+                    "status": "CANCELLED",
+                    "refundInitiated": true,
+                    "message": "Order cancelled successfully"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Order cannot be cancelled after kitchen preparation has begun",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payments/create-order": {
+      "post": {
+        "tags": [
+          "6. Payment Gateway (Razorpay & UPI)"
+        ],
+        "summary": "Create Gateway Order (Razorpay)",
+        "description": "Generates or retrieves a server-verified Razorpay Gateway Order for online checkout in the Flutter mobile app.\n\nUse `gatewayOrderId` and `keyId` to initialize the official `razorpay_flutter` SDK.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "string",
+                    "example": "6512bd34a1b2c3d4e5f67900"
+                  },
+                  "idempotencyKey": {
+                    "type": "string",
+                    "example": "pay_idemp_91a82b"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Razorpay order ready",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "gatewayOrderId": "order_Mno12345678901",
+                    "amountPaise": 94290,
+                    "currency": "INR",
+                    "keyId": "rzp_test_12345678901234",
+                    "orderId": "6512bd34a1b2c3d4e5f67900"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Order is already paid or invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payments/verify": {
+      "post": {
+        "tags": [
+          "6. Payment Gateway (Razorpay & UPI)"
+        ],
+        "summary": "Verify Razorpay Payment Signature",
+        "description": "Validates the Razorpay HMAC SHA256 payment signature returned by the `razorpay_flutter` SDK (`onPaymentSuccess`). Once verified, the order status transitions atomically to `PAYMENT_CONFIRMED` and is routed to the kitchen KDS tablet.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId",
+                  "razorpay_order_id",
+                  "razorpay_payment_id",
+                  "razorpay_signature"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "string",
+                    "example": "6512bd34a1b2c3d4e5f67900"
+                  },
+                  "razorpay_order_id": {
+                    "type": "string",
+                    "example": "order_Mno12345678901"
+                  },
+                  "razorpay_payment_id": {
+                    "type": "string",
+                    "example": "pay_Abc98765432109"
+                  },
+                  "razorpay_signature": {
+                    "type": "string",
+                    "example": "2b9f8487b3a9c72e45ef13..."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signature verified & order confirmed",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "paymentStatus": "COMPLETED",
+                    "orderStatus": "PAYMENT_CONFIRMED",
+                    "paidAt": "2026-11-05T08:31:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cryptographic signature verification failed (tampered payload)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payments/doorstep-qr": {
+      "post": {
+        "tags": [
+          "6. Payment Gateway (Razorpay & UPI)"
+        ],
+        "summary": "Generate Doorstep Dynamic UPI QR",
+        "description": "Generates a dynamic NPCI UPI QR code string and Intent URL for Doorstep Pay on Delivery (COD). The QR code embeds the exact order amount in paise and merchant VPA, allowing the customer to pay via Google Pay, PhonePe, Paytm, or CRED at their doorstep.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "string",
+                    "example": "6512bd34a1b2c3d4e5f67900"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dynamic UPI QR generated",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "upiString": "upi://pay?pa=fdp@icici&pn=FDP%20Delivery&am=942.90&cu=INR&tr=FDP-20261105-0042",
+                    "intentUrl": "upi://pay?pa=fdp@icici&pn=FDP%20Delivery&am=942.90&cu=INR&tr=FDP-20261105-0042",
+                    "qrCodeDataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+                    "amountPaise": 94290
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ws": {
+      "get": {
+        "tags": [
+          "7. Real-Time Tracking & WebSocket"
+        ],
+        "summary": "WebSocket Duplex Gateway Protocol (/ws)",
+        "description": "### \ud83d\udce1 High-Speed WebSocket Gateway\n\nConnect via standard WebSocket client in Flutter (`web_socket_channel` package):\n```dart\nfinal channel = WebSocketChannel.connect(\n  Uri.parse('wss://fdp-tkl0.onrender.com/ws'),\n);\n```\n\n---\n\n#### 1. Handshake Authentication\nImmediately upon opening the socket, send the authentication frame:\n```json\n{\n  \"action\": \"auth\",\n  \"token\": \"<CUSTOMER_JWT_ACCESS_TOKEN>\"\n}\n```\n*(Or pass `Authorization: Bearer <token>` in the initial HTTP upgrade headers)*\n\n---\n\n#### 2. Heartbeat Ping / Pong\nSend every 30 seconds to keep connection alive through mobile NAT:\n```json\n{ \"action\": \"ping\" }\n```\nServer responds with:\n```json\n{ \"event\": \"pong\" }\n```\n\n---\n\n#### 3. Subscribe to Live Order Tracking\nSubscribe to your order's real-time room:\n```json\n{\n  \"action\": \"subscribe\",\n  \"room\": \"order:6512bd34a1b2c3d4e5f67900\"\n}\n```\n*(Strict IDOR check: Server rejects subscription if customer does not own the order)*\n\n---\n\n#### 4. Inbound Streaming Events\n\n##### Event: `order:update`\nFired whenever the order advances across the kitchen/delivery state machine:\n```json\n{\n  \"event\": \"order:update\",\n  \"data\": {\n    \"orderId\": \"6512bd34a1b2c3d4e5f67900\",\n    \"status\": \"OUT_FOR_DELIVERY\",\n    \"deliveryOtp\": \"4829\",\n    \"timestamp\": \"2026-11-05T08:50:00.000Z\"\n  }\n}\n```\n\n##### Event: `driver:location`\nContinuous live GPS coordinates streamed by the assigned delivery partner:\n```json\n{\n  \"event\": \"driver:location\",\n  \"data\": {\n    \"orderId\": \"6512bd34a1b2c3d4e5f67900\",\n    \"driverId\": \"6512bd34a1b2c3d4e5f67999\",\n    \"latitude\": 28.4892,\n    \"longitude\": 77.0885,\n    \"heading\": 135.0,\n    \"speed\": 24.5,\n    \"recordedAt\": \"2026-11-05T08:52:10.000Z\"\n  }\n}\n```\n\n---\n\n#### 5. Unsubscribe from Room\nWhen navigating away from the order tracking screen:\n```json\n{\n  \"action\": \"unsubscribe\",\n  \"room\": \"order:6512bd34a1b2c3d4e5f67900\"\n}\n```\n",
+        "responses": {
+          "101": {
+            "description": "Switching Protocols to WebSocket Duplex Connection"
+          }
+        }
+      }
+    },
+    "/reviews": {
+      "post": {
+        "tags": [
+          "8. Reviews & Ratings"
+        ],
+        "summary": "Submit Review & Ratings for Delivered Order",
+        "description": "Allows the customer to review a completed delivery:\n- Overall store star rating (1 to 5 integer stars)\n- Store comment & tags (e.g. 'Fresh', 'Hygienic Packaging')\n- Item-specific thumbs-up recommendations & comments\n- Driver rating (1 to 5 stars) & driver compliment tags (e.g. 'Polite', 'On Time')",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId",
+                  "rating"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "string",
+                    "example": "6512bd34a1b2c3d4e5f67900"
+                  },
+                  "rating": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "example": 5
+                  },
+                  "comment": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "The Kaju Katli was extremely fresh and melted in mouth!"
+                  },
+                  "foodTags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "Fresh",
+                      "Hygienic Packaging",
+                      "Authentic Taste"
+                    ]
+                  },
+                  "itemRatings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "menuItemId",
+                        "name"
+                      ],
+                      "properties": {
+                        "menuItemId": {
+                          "type": "string",
+                          "example": "6512bd34a1b2c3d4e5f67895"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "Kaju Katli"
+                        },
+                        "isRecommended": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "comment": {
+                          "type": "string",
+                          "example": "Loved it"
+                        }
+                      }
+                    }
+                  },
+                  "driverRating": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "example": 5
+                  },
+                  "driverTags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "Polite",
+                      "On Time"
+                    ]
+                  },
+                  "driverComment": {
+                    "type": "string",
+                    "example": "Very courteous delivery driver"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Review submitted successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "id": "6512bd34a1b2c3d4e5f67950",
+                    "rating": 5,
+                    "comment": "The Kaju Katli was extremely fresh!"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Order already reviewed or not delivered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reviews/order/{orderId}": {
+      "get": {
+        "tags": [
+          "8. Reviews & Ratings"
+        ],
+        "summary": "Get My Review for Order",
+        "description": "Returns the review previously submitted by the customer for this order, or null if not yet reviewed.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67900"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review retrieved",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "id": "6512bd34a1b2c3d4e5f67950",
+                    "rating": 5,
+                    "comment": "The Kaju Katli was extremely fresh!"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reviews/{id}": {
+      "put": {
+        "tags": [
+          "8. Reviews & Ratings"
+        ],
+        "summary": "Edit Review (Within 7 Days)",
+        "description": "Allows the customer to update their star rating or review comments within 7 days of submission.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67950"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "example": 5
+                  },
+                  "comment": {
+                    "type": "string",
+                    "example": "Updated review text"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Review updated",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "message": "Review updated successfully"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reviews/store/{storeId}": {
+      "get": {
+        "tags": [
+          "8. Reviews & Ratings"
+        ],
+        "summary": "Public Store Reviews Feed",
+        "description": "Returns public customer reviews for a store along with average star rating, total review count, star breakdown (1 to 5 stars), and store owner responses.",
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67890"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "rating",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            },
+            "description": "Filter by exact star rating"
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NEWEST",
+                "HIGHEST_RATING",
+                "LOWEST_RATING",
+                "MOST_HELPFUL"
+              ],
+              "default": "NEWEST"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Store reviews list with aggregate statistics",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "stats": {
+                      "averageRating": 4.6,
+                      "totalReviews": 84,
+                      "starBreakdown": {
+                        "1": 2,
+                        "2": 2,
+                        "3": 5,
+                        "4": 15,
+                        "5": 60
+                      }
+                    },
+                    "reviews": [
+                      {
+                        "id": "6512bd34a1b2c3d4e5f67950",
+                        "customerName": "Rahul S.",
+                        "rating": 5,
+                        "comment": "The Kaju Katli was extremely fresh!",
+                        "helpfulCount": 8,
+                        "storeReply": {
+                          "comment": "Thank you Rahul! We use 100% pure ghee and fresh Goan cashews.",
+                          "repliedAt": "2026-11-05T09:00:00.000Z"
+                        },
+                        "createdAt": "2026-11-05T08:55:00.000Z"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reviews/{id}/helpful": {
+      "post": {
+        "tags": [
+          "8. Reviews & Ratings"
+        ],
+        "summary": "Upvote Review (Helpful)",
+        "description": "Increments the helpful counter for a review.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67950"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Helpful counter updated",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "helpfulCount": 9
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/device-token": {
+      "post": {
+        "tags": [
+          "9. Push Notifications & Inbox"
+        ],
+        "summary": "Register FCM Device Push Token",
+        "description": "Registers the customer's Firebase Cloud Messaging (FCM) device token to receive real-time push notifications for order status changes, kitchen acceptance, driver arrival, and refunds.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 10,
+                    "example": "fcm_token_c5x8y9z0a1b2c3d4e5f6..."
+                  },
+                  "platform": {
+                    "type": "string",
+                    "enum": [
+                      "ANDROID",
+                      "IOS",
+                      "WEB"
+                    ],
+                    "default": "ANDROID",
+                    "example": "ANDROID"
+                  },
+                  "deviceModel": {
+                    "type": "string",
+                    "example": "Google Pixel 8 Pro"
+                  },
+                  "appVersion": {
+                    "type": "string",
+                    "example": "1.0.0"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Device token registered",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "message": "Device registered successfully"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "9. Push Notifications & Inbox"
+        ],
+        "summary": "Unregister Device Token (On Logout)",
+        "description": "Removes the FCM token when the customer signs out to prevent notifications from reaching the device.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "example": "fcm_token_c5x8y9z0a1b2c3d4e5f6..."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Device token unregistered",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "message": "Device unregistered successfully"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/inbox": {
+      "get": {
+        "tags": [
+          "9. Push Notifications & Inbox"
+        ],
+        "summary": "Get In-App Notifications Inbox",
+        "description": "Returns paginated list of past notifications received by the customer.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "unreadOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notifications list",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": [
+                    {
+                      "_id": "6512bd34a1b2c3d4e5f67970",
+                      "title": "Order Picked Up! \ud83d\udef5",
+                      "body": "Rajesh has picked up your food from Bikaner Sweets and is on the way.",
+                      "type": "ORDER_STATUS",
+                      "data": {
+                        "orderId": "6512bd34a1b2c3d4e5f67900"
+                      },
+                      "isRead": false,
+                      "createdAt": "2026-11-05T08:50:00.000Z"
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "limit": 20,
+                    "total": 6
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "tags": [
+          "9. Push Notifications & Inbox"
+        ],
+        "summary": "Get Unread Notifications Count",
+        "description": "Fast lightweight count used for displaying the red badge counter on the notification bell icon.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unread count",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "unreadCount": 3
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "tags": [
+          "9. Push Notifications & Inbox"
+        ],
+        "summary": "Mark All Notifications as Read",
+        "description": "Clears all unread notification badges for the customer.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All notifications marked read",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "message": "All notifications marked as read"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "tags": [
+          "9. Push Notifications & Inbox"
+        ],
+        "summary": "Mark Specific Notification as Read",
+        "description": "Marks a single notification as read when opened by the customer.",
+        "security": [
+          {
+            "CustomerBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "6512bd34a1b2c3d4e5f67970"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification marked read",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "message": "Notification marked as read"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

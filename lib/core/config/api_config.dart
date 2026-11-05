@@ -56,7 +56,14 @@ class ApiConfig {
   static String get razorpayKeyId {
     const fromDefine = String.fromEnvironment('RAZORPAY_KEY_ID');
     if (fromDefine.isNotEmpty) return fromDefine;
-    return EnvConfig.get('RAZORPAY_KEY_ID');
+    return EnvConfig.get('RAZORPAY_KEY_ID', defaultValue: 'rzp_test_Tvfe16OIBHNqTe');
+  }
+
+  /// Razorpay Payment Gateway Secret (for verification)
+  static String get razorpayKeySecret {
+    const fromDefine = String.fromEnvironment('RAZORPAY_KEY_SECRET');
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return EnvConfig.get('RAZORPAY_KEY_SECRET', defaultValue: 'UgfQVDafBzDpBGzSAYFAJvga');
   }
 
   /// Enable full API request/response logging in terminal

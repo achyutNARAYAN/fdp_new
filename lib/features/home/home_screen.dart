@@ -16,6 +16,19 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<LocationState>(locationProvider, (previous, next) {
+      final prevCoords =
+          previous?.selectedAddress?.coordinates ?? previous?.currentCoordinates;
+      final nextCoords =
+          next.selectedAddress?.coordinates ?? next.currentCoordinates;
+      if (prevCoords != nextCoords) {
+        ref.read(storesProvider.notifier).loadStores(
+              nearLng: nextCoords?.longitude,
+              nearLat: nextCoords?.latitude,
+            );
+      }
+    });
+
     final locationState = ref.watch(locationProvider);
     final address = locationState.selectedAddress;
     final addressLocation = address == null
@@ -428,20 +441,60 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
 
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppDimensions.p16,
+                    if (displayShops.isEmpty && !storesState.isLoading)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppDimensions.p16,
+                            vertical: 32,
+                          ),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                const Icon(
+                                  Icons.storefront_outlined,
+                                  size: 48,
+                                  color: AppColors.textSecondary,
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'No stores found near your current location',
+                                  style: AppTypography.itemName,
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  'Try selecting another address or explore all stores',
+                                  style: AppTypography.caption,
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 12),
+                                OutlinedButton(
+                                  onPressed: () => ref
+                                      .read(storesProvider.notifier)
+                                      .loadStores(),
+                                  child: const Text('Show All Stores'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppDimensions.p16,
+                        ),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate((context, index) {
+                            final shop = displayShops[index];
+                            return ShopCard(
+                              shop: shop,
+                              onTap: () => context.push('/shop/${shop.id}'),
+                            );
+                          }, childCount: displayShops.length),
+                        ),
                       ),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final shop = displayShops[index];
-                          return ShopCard(
-                            shop: shop,
-                            onTap: () => context.push('/shop/${shop.id}'),
-                          );
-                        }, childCount: displayShops.length),
-                      ),
-                    ),
 
                     const SliverToBoxAdapter(child: SizedBox(height: 40)),
                   ],

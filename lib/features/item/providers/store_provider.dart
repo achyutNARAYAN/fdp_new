@@ -75,6 +75,15 @@ class StoresNotifier extends StateNotifier<StoresState> {
         );
       }
 
+      // If geo-filtered query returned nothing, fetch all stores without
+      // location filter so the user always sees something.
+      if (stores.isEmpty && (nearLng != null || nearLat != null)) {
+        stores = await _apiService.getStores(
+          category: category,
+          search: search,
+        );
+      }
+
       state = state.copyWith(
         isLoading: false,
         stores: stores,
@@ -113,11 +122,10 @@ final catalogOffersProvider = FutureProvider.family<List<ItemModel>, String>((
   ref,
   catalogItemId,
 ) async {
-  final stores = ref
-      .watch(storesProvider)
-      .stores
-      .where((store) => store.isOpen)
-      .toList();
+  final allStores = ref.watch(storesProvider).stores;
+  final openStores = allStores.where((store) => store.isOpen).toList();
+  final stores = openStores.isNotEmpty ? openStores : allStores;
+
   final menus = await Future.wait(
     stores.map((store) async {
       try {
@@ -134,8 +142,9 @@ final catalogOffersProvider = FutureProvider.family<List<ItemModel>, String>((
       .expand((items) => items)
       .where(
         (item) =>
-            item.id == catalogItemId &&
-            item.availability == ItemAvailability.available &&
+            (item.id == catalogItemId ||
+                item.menuItemId == catalogItemId ||
+                item.catalogItemId == catalogItemId) &&
             item.variants.isNotEmpty,
       )
       .toList();

@@ -60,6 +60,11 @@ class CartNotifier extends StateNotifier<CartModel> {
     String? specialInstructions,
     List<ItemCustomizationOption> customizations = const [],
   }) async {
+    if (item.shopId.trim().isEmpty) {
+      throw StateError(
+        'Cannot add item to cart without a selected store. Please choose a store first.',
+      );
+    }
     if (!canAddItem(item)) {
       throw CartConflictException(
         currentShopName: state.shopName ?? 'Current Restaurant',
@@ -114,6 +119,9 @@ class CartNotifier extends StateNotifier<CartModel> {
         cookingInstructions: specialInstructions ?? '',
       );
       _updateFromApi(response);
+      if (response['items'] == null) {
+        await loadActiveCart();
+      }
       lastError = null;
     } on ApiException catch (error) {
       if (error.code == 'DIFFERENT_STORE_CART' ||
@@ -169,6 +177,9 @@ class CartNotifier extends StateNotifier<CartModel> {
         replaceCart: true,
       );
       _updateFromApi(response);
+      if (response['items'] == null) {
+        await loadActiveCart();
+      }
       lastError = null;
     } catch (error) {
       lastError = _message(error);
@@ -200,6 +211,9 @@ class CartNotifier extends StateNotifier<CartModel> {
     try {
       final response = await _api.updateItem(cartItemId, quantity: newQuantity);
       _updateFromApi(response);
+      if (response['items'] == null) {
+        await loadActiveCart();
+      }
       lastError = null;
     } catch (error) {
       lastError = _message(error);
@@ -234,6 +248,9 @@ class CartNotifier extends StateNotifier<CartModel> {
     try {
       final response = await _api.applyCoupon(code);
       _updateFromApi(response);
+      if (response['items'] == null) {
+        await loadActiveCart();
+      }
       lastError = null;
     } catch (error) {
       lastError = _message(error);
@@ -246,6 +263,9 @@ class CartNotifier extends StateNotifier<CartModel> {
     try {
       final response = await _api.removeCoupon();
       _updateFromApi(response);
+      if (response['items'] == null) {
+        await loadActiveCart();
+      }
       lastError = null;
     } catch (error) {
       state = state.copyWith(appliedCouponCode: null, discountAmount: 0.0);
@@ -258,6 +278,9 @@ class CartNotifier extends StateNotifier<CartModel> {
       final int tipPaise = ApiConfig.rupeesToPaise(rupees);
       final response = await _api.setTip(tipPaise);
       _updateFromApi(response);
+      if (response['items'] == null) {
+        await loadActiveCart();
+      }
       lastError = null;
     } catch (error) {
       lastError = _message(error);
@@ -269,6 +292,9 @@ class CartNotifier extends StateNotifier<CartModel> {
     try {
       final response = await _api.setAddress(addressId, instructions);
       _updateFromApi(response);
+      if (response['items'] == null) {
+        await loadActiveCart();
+      }
       lastError = null;
     } catch (error) {
       state = state.copyWith(deliveryInstructions: instructions);

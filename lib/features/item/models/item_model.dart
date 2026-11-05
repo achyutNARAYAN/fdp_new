@@ -64,6 +64,7 @@ class ItemCustomizationGroup {
 class ItemModel {
   final String id;
   final String menuItemId;
+  final String? catalogItemId;
   final String shopId;
   final String shopName;
   final String name;
@@ -94,6 +95,7 @@ class ItemModel {
   const ItemModel({
     required this.id,
     this.menuItemId = '',
+    this.catalogItemId,
     required this.shopId,
     required this.shopName,
     required this.name,
@@ -260,6 +262,7 @@ class ItemModel {
     return ItemModel(
       id: itemId,
       menuItemId: itemId,
+      catalogItemId: itemId,
       shopId: effectiveShopId,
       shopName: effectiveShopName,
       name: json['name']?.toString() ?? 'Traditional Sweet',
@@ -305,8 +308,14 @@ class ItemModel {
   }) {
     final catalogObj = json['catalogItemId'];
     Map<String, dynamic> catalogData = {};
+    String parsedCatalogId = '';
     if (catalogObj is Map<String, dynamic>) {
       catalogData = catalogObj;
+      parsedCatalogId = catalogData['_id']?.toString() ??
+          catalogData['id']?.toString() ??
+          '';
+    } else if (catalogObj is String) {
+      parsedCatalogId = catalogObj;
     }
 
     final List<dynamic>? pricingList =
@@ -420,6 +429,7 @@ class ItemModel {
       menuItemId: json['menuItemId']?.toString() ??
           json['_id']?.toString() ??
           effectiveItemId,
+      catalogItemId: parsedCatalogId.isNotEmpty ? parsedCatalogId : null,
       shopId: json['storeId']?.toString() ?? storeId,
       shopName: storeName,
       name: name,

@@ -26,7 +26,11 @@ class DiscoveryFeedModel {
     return map.values.toList();
   }
 
-  factory DiscoveryFeedModel.fromApi(Map<String, dynamic> json) {
+  factory DiscoveryFeedModel.fromApi(Map<String, dynamic> rawJson) {
+    final json = rawJson['data'] is Map<String, dynamic>
+        ? rawJson['data'] as Map<String, dynamic>
+        : rawJson;
+
     List<ShopModel> parseList(dynamic raw) {
       if (raw is List) {
         return raw
@@ -37,11 +41,49 @@ class DiscoveryFeedModel {
       return const [];
     }
 
+    List<ShopModel> tier1 = [];
+    List<ShopModel> tier2 = [];
+    List<ShopModel> tier3 = [];
+    List<ShopModel> iconic = [];
+
+    if (json['tiers'] is List) {
+      final tiers = json['tiers'] as List;
+      for (final t in tiers) {
+        if (t is Map<String, dynamic>) {
+          final code = t['tierCode']?.toString().toUpperCase() ?? '';
+          final stores = parseList(t['stores']);
+          if (code.contains('2KM') || code == 'TIER_1' || code == 'UNDER_2KM') {
+            tier1 = stores;
+          } else if (code.contains('2_TO_4') || code == 'TIER_2') {
+            tier2 = stores;
+          } else if (code.contains('4_TO_8') || code == 'TIER_3') {
+            tier3 = stores;
+          } else if (tier1.isEmpty) {
+            tier1 = stores;
+          } else if (tier2.isEmpty) {
+            tier2 = stores;
+          } else {
+            tier3 = stores;
+          }
+        }
+      }
+    } else {
+      tier1 = parseList(json['tier1']);
+      tier2 = parseList(json['tier2']);
+      tier3 = parseList(json['tier3']);
+    }
+
+    if (json['featuredTopRated'] != null) {
+      iconic = parseList(json['featuredTopRated']);
+    } else if (json['iconicHalwais'] != null) {
+      iconic = parseList(json['iconicHalwais']);
+    }
+
     return DiscoveryFeedModel(
-      tier1: parseList(json['tier1']),
-      tier2: parseList(json['tier2']),
-      tier3: parseList(json['tier3']),
-      iconicHalwais: parseList(json['iconicHalwais']),
+      tier1: tier1,
+      tier2: tier2,
+      tier3: tier3,
+      iconicHalwais: iconic,
     );
   }
 }

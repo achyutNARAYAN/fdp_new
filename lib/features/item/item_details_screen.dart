@@ -70,7 +70,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
       );
     }
     final defaultVariant = item.defaultVariant;
-    if (defaultVariant == null) {
+    if (item.shopId.trim().isEmpty || defaultVariant == null) {
       return _buildCatalogDetails(item);
     }
     if (item.availability == ItemAvailability.unavailable) {
@@ -407,6 +407,14 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                             ? 'Customise Options'
                             : 'Add • ${Formatters.formatCurrency(_selectedVariant!.price * _quantity)}',
                         onPressed: () {
+                          if (item.shopId.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please select a shop to order this item.'),
+                              ),
+                            );
+                            return;
+                          }
                           if (item.customizationGroups.isNotEmpty ||
                               item.allowsCakeMessage) {
                             _openCustomiseSheet(item);

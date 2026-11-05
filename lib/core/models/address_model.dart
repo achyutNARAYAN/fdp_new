@@ -176,8 +176,9 @@ class AddressModel {
       'city': city,
       'state': state,
       'pincode': pinCode,
-      if (coordinates != null)
-        'coordinates': [coordinates!.longitude, coordinates!.latitude],
+      'coordinates': coordinates != null
+          ? [coordinates!.longitude, coordinates!.latitude]
+          : const [77.2090, 28.6139],
       'isDefault': isDefault,
       'deliveryInstructions': deliveryInstructions ?? '',
     };
