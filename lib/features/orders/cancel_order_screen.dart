@@ -57,12 +57,17 @@ class _CancelOrderScreenState extends ConsumerState<CancelOrderScreen> {
             child: const Text('Keep Order'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              ref
+              await ref
                   .read(orderProvider.notifier)
-                  .cancelOrder(reason: _selectedReason);
-              context.go('/order-details/${order.orderId}');
+                  .cancelOrderApi(
+                    orderId: order.orderId,
+                    reason: _selectedReason,
+                  );
+              if (mounted) {
+                context.go('/order-details/${order.orderId}');
+              }
             },
             child: const Text(
               'Cancel Order',

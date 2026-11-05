@@ -18,10 +18,11 @@ class RateReviewScreen extends ConsumerStatefulWidget {
 }
 
 class _RateReviewScreenState extends ConsumerState<RateReviewScreen> {
-  int _foodRating = 0;
-  int _partnerRating = 0;
+  int _foodRating = 5;
+  int _partnerRating = 5;
   final TextEditingController _commentController = TextEditingController();
   final Set<String> _selectedTags = {};
+  bool _isSubmitting = false;
 
   static const List<String> _tags = [
     'Fresh & Pure',
@@ -33,24 +34,103 @@ class _RateReviewScreenState extends ConsumerState<RateReviewScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(orderProvider.notifier).fetchOrderById(widget.orderId);
+    });
+  }
+
+  @override
   void dispose() {
     _commentController.dispose();
     super.dispose();
   }
 
-  void _submitReview() {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Review API is unavailable.')));
+  Future<void> _submitReview() async {
+    if (_foodRating <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a star rating for the sweets.')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final orderState = ref.read(orderProvider);
+      final order = (orderState.activeOrder?.orderId == widget.orderId
+              ? orderState.activeOrder
+              : orderState.pastOrders
+                  .where((o) => o.orderId == widget.orderId)
+                  .firstOrNull) ??
+          orderState.activeOrder;
+
+      final List<Map<String, dynamic>> dishRatings = [];
+      if (order != null && order.items.isNotEmpty) {
+        for (final cartItem in order.items) {
+          if (cartItem.item.menuItemId.isNotEmpty) {
+            dishRatings.add({
+              'menuItemId': cartItem.item.menuItemId,
+              'rating': _foodRating,
+            });
+          }
+        }
+      }
+
+      final tagsSummary = _selectedTags.isNotEmpty
+          ? ' [Tags: ${_selectedTags.join(", ")}]'
+          : '';
+      final commentText = _commentController.text.trim();
+      final fullComment = commentText.isNotEmpty
+          ? '$commentText$tagsSummary'
+          : (_selectedTags.isNotEmpty ? _selectedTags.join(', ') : 'Great order!');
+
+      await ref.read(orderProvider.notifier).submitOrderReview(
+            orderId: widget.orderId,
+            rating: _foodRating,
+            comment: fullComment,
+            deliveryRating: _partnerRating > 0 ? _partnerRating : null,
+            dishRatings: dishRatings.isNotEmpty ? dishRatings : null,
+          );
+
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Thank you! Your review has been submitted successfully.'),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+
+      context.go('/orders');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not submit review: $e'),
+          backgroundColor: AppColors.accent,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasOrder = ref
-        .watch(orderProvider)
-        .pastOrders
-        .any((order) => order.orderId == widget.orderId);
-    if (!hasOrder) return const NoOrderData();
+    final orderState = ref.watch(orderProvider);
+    final order = (orderState.activeOrder?.orderId == widget.orderId
+            ? orderState.activeOrder
+            : orderState.pastOrders
+                .where((o) => o.orderId == widget.orderId)
+                .firstOrNull) ??
+        orderState.activeOrder;
+
+    if (order == null && orderState.pastOrders.isEmpty) {
+      return const NoOrderData();
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -81,9 +161,12 @@ class _RateReviewScreenState extends ConsumerState<RateReviewScreen> {
               ),
               child: Column(
                 children: [
-                  const Text(
-                    'How were the sweets & packaging?',
+                  Text(
+                    order != null
+                        ? 'How were the sweets from ${order.shopName}?'
+                        : 'How were the sweets & packaging?',
                     style: AppTypography.itemName,
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -257,7 +340,11 @@ class _RateReviewScreenState extends ConsumerState<RateReviewScreen> {
 
             const SizedBox(height: 24),
 
-            AppPrimaryButton(label: 'Submit Review', onPressed: _submitReview),
+            AppPrimaryButton(
+              label: 'Submit Review',
+              isLoading: _isSubmitting,
+              onPressed: _isSubmitting ? null : _submitReview,
+            ),
           ],
         ),
       ),

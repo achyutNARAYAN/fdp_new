@@ -7,6 +7,31 @@ class ApiLogger {
   ApiLogger._();
 
   static const JsonEncoder _prettyEncoder = JsonEncoder.withIndent('  ');
+  static const Set<String> _sensitiveKeys = {
+    'authorization',
+    'token',
+    'idtoken',
+    'registrationtoken',
+    'otp',
+    'password',
+    'signature',
+    'email',
+    'phone',
+    'gatewaypaymentid',
+    'gatewaysignature',
+  };
+
+  static dynamic _redact(dynamic value) {
+    if (value is Map) {
+      return value.map((key, value) {
+        final normalizedKey = key.toString().toLowerCase().replaceAll('_', '');
+        final isSensitive = _sensitiveKeys.any(normalizedKey.contains);
+        return MapEntry(key, isSensitive ? '[REDACTED]' : _redact(value));
+      });
+    }
+    if (value is List) return value.map(_redact).toList();
+    return value;
+  }
 
   /// Logs outgoing HTTP requests to the terminal
   static void logRequest({
@@ -38,12 +63,12 @@ class ApiLogger {
       try {
         if (body is String) {
           final decoded = jsonDecode(body);
-          buffer.writeln(_prettyEncoder.convert(decoded));
+          buffer.writeln(_prettyEncoder.convert(_redact(decoded)));
         } else {
-          buffer.writeln(_prettyEncoder.convert(body));
+          buffer.writeln(_prettyEncoder.convert(_redact(body)));
         }
       } catch (_) {
-        buffer.writeln(body.toString());
+        buffer.writeln('[UNPARSEABLE BODY REDACTED]');
       }
     }
     buffer.writeln('═══════════════════════════════════════════════════════════');
@@ -75,9 +100,9 @@ class ApiLogger {
       buffer.writeln('📥  BODY   :');
       try {
         final decoded = jsonDecode(responseBody);
-        buffer.writeln(_prettyEncoder.convert(decoded));
+        buffer.writeln(_prettyEncoder.convert(_redact(decoded)));
       } catch (_) {
-        buffer.writeln(responseBody);
+        buffer.writeln('[UNPARSEABLE RESPONSE REDACTED]');
       }
     }
     buffer.writeln('═══════════════════════════════════════════════════════════');

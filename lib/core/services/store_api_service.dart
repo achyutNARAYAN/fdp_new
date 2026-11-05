@@ -30,18 +30,37 @@ class StoreApiService {
     if (maxDistanceKm != null) qp['maxDistanceKm'] = maxDistanceKm;
     if (isAcceptingOrders != null) qp['isAcceptingOrders'] = isAcceptingOrders;
 
-    final res = await _client.get(
-      '/stores',
-      queryParams: qp.isNotEmpty ? qp : null,
-    );
+    dynamic responseData;
+    try {
+      final res = await _client.get(
+        '/stores/customer',
+        queryParams: qp.isNotEmpty ? qp : null,
+      );
+      responseData = res.data;
+    } catch (_) {
+      final res = await _client.get(
+        '/stores',
+        queryParams: qp.isNotEmpty ? qp : null,
+      );
+      responseData = res.data;
+    }
 
-    if (res.data is List) {
-      final list = res.data as List;
-      return list
+    if (responseData is List) {
+      return responseData
           .map((e) => ShopModel.fromApiJson(e as Map<String, dynamic>))
           .toList();
     }
-    throw FormatException('Invalid stores response');
+    if (responseData is Map<String, dynamic>) {
+      final list = responseData['stores'] ??
+          responseData['data'] ??
+          responseData['results'];
+      if (list is List) {
+        return list
+            .map((e) => ShopModel.fromApiJson(e as Map<String, dynamic>))
+            .toList();
+      }
+    }
+    return <ShopModel>[];
   }
 
   /// Get single store by ID or code (e.g. STR-2026-0001)
@@ -58,20 +77,56 @@ class StoreApiService {
     String storeIdOrCode, {
     required String storeName,
   }) async {
-    final res = await _client.get('/stores/$storeIdOrCode/menu');
-    if (res.data is List) {
-      final list = res.data as List;
-      return list
-          .map(
-            (e) => ItemModel.fromStoreMenuItemApi(
-              e as Map<String, dynamic>,
-              storeId: storeIdOrCode,
-              storeName: storeName,
-            ),
-          )
-          .toList();
+    dynamic responseData;
+    try {
+      final res = await _client.get('/stores/customer/$storeIdOrCode/menu');
+      responseData = res.data;
+    } catch (_) {
+      final res = await _client.get('/stores/$storeIdOrCode/menu');
+      responseData = res.data;
     }
-    throw FormatException('Invalid store menu response');
+
+    List<dynamic> itemsList = [];
+    if (responseData is List) {
+      itemsList = responseData;
+    } else if (responseData is Map<String, dynamic>) {
+      final possible = responseData['menu'] ??
+          responseData['items'] ??
+          responseData['data'];
+      if (possible is List) itemsList = possible;
+    }
+
+    return itemsList
+        .map(
+          (e) => ItemModel.fromStoreMenuItemApi(
+            e as Map<String, dynamic>,
+            storeId: storeIdOrCode,
+            storeName: storeName,
+          ),
+        )
+        .toList();
+  }
+
+  /// Global dish search across stores with optional coordinates
+  Future<List<dynamic>> searchDishes({
+    required String query,
+    double? lat,
+    double? lng,
+  }) async {
+    final qp = <String, dynamic>{'q': query};
+    if (lat != null) qp['lat'] = lat;
+    if (lng != null) qp['lng'] = lng;
+
+    try {
+      final res =
+          await _client.get('/stores/customer/search', queryParams: qp);
+      if (res.data is List) return res.data as List<dynamic>;
+      if (res.data is Map<String, dynamic>) {
+        final list = res.data['results'] ?? res.data['dishes'] ?? res.data['data'];
+        if (list is List) return list;
+      }
+    } catch (_) {}
+    return <dynamic>[];
   }
 
   /// 1-Tap Toggle: Open / Closed (isAcceptingOrders)

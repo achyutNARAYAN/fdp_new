@@ -294,8 +294,12 @@ class CartNotifier extends StateNotifier<CartModel> {
   }
 
   /// Synchronize state from backend envelope
-  void _updateFromApi(Map<String, dynamic> data) {
-    if (data.isEmpty) return;
+  void _updateFromApi(Map<String, dynamic> rawData) {
+    if (rawData.isEmpty) return;
+    final data = (rawData.containsKey('cart') &&
+            rawData['cart'] is Map<String, dynamic>)
+        ? rawData['cart'] as Map<String, dynamic>
+        : rawData;
 
     final String? storeId = data['storeId']?.toString();
     final String? storeName = data['storeName']?.toString();

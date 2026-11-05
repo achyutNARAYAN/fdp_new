@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../cart/models/cart_model.dart';
+import '../../item/models/item_model.dart';
+import '../../../core/config/api_config.dart';
 
 enum OrderStatus {
   orderPlaced('Order Placed', Icons.receipt_long),
@@ -74,6 +76,9 @@ class ProposedChangeItem {
 
 class OrderModel {
   final String orderId;
+  final String? orderNumber;
+  final String? kotNumber;
+  final String? deliveryOtp;
   final String shopId;
   final String shopName;
   final String shopAddress;
@@ -108,6 +113,9 @@ class OrderModel {
 
   const OrderModel({
     required this.orderId,
+    this.orderNumber,
+    this.kotNumber,
+    this.deliveryOtp,
     required this.shopId,
     required this.shopName,
     required this.shopAddress,
@@ -157,6 +165,9 @@ class OrderModel {
     String? driverName,
     String? driverPhone,
     String? driverVehicle,
+    String? deliveryOtp,
+    String? orderNumber,
+    String? kotNumber,
     List<ProposedChangeItem>? proposedChanges,
     String? cancellationReason,
     double? refundAmount,
@@ -165,6 +176,9 @@ class OrderModel {
   }) {
     return OrderModel(
       orderId: orderId,
+      orderNumber: orderNumber ?? this.orderNumber,
+      kotNumber: kotNumber ?? this.kotNumber,
+      deliveryOtp: deliveryOtp ?? this.deliveryOtp,
       shopId: shopId,
       shopName: shopName,
       shopAddress: shopAddress,
@@ -204,10 +218,19 @@ class OrderModel {
     List<CartItemModel>? fallbackItems,
   }) {
     final id = json['_id']?.toString() ??
-        json['orderNumber']?.toString() ??
         json['id']?.toString() ??
         json['orderId']?.toString() ??
+        json['orderNumber']?.toString() ??
         'ORD_${DateTime.now().millisecondsSinceEpoch}';
+
+    final String? orderNumber = json['orderNumber']?.toString();
+    final String? kotNumber = json['kotNumber']?.toString();
+
+    final securityOtps = json['securityOtps'] is Map<String, dynamic>
+        ? json['securityOtps'] as Map<String, dynamic>
+        : null;
+    final String? deliveryOtp = securityOtps?['deliveryOtp']?.toString() ??
+        json['deliveryOtp']?.toString();
 
     final pricing = json['pricing'] is Map<String, dynamic>
         ? json['pricing'] as Map<String, dynamic>
@@ -261,13 +284,17 @@ class OrderModel {
       status = OrderStatus.readyForPickup;
     } else if (statusStr.contains('DRIVER') || statusStr.contains('PICKED')) {
       status = OrderStatus.pickedUp;
-    } else if (statusStr.contains('OUT') || statusStr.contains('DELIVERY') || statusStr.contains('ARRIVED')) {
+    } else if (statusStr.contains('OUT') ||
+        statusStr.contains('DELIVERY') ||
+        statusStr.contains('ARRIVED')) {
       status = OrderStatus.outForDelivery;
     } else if (statusStr.contains('DELIVERED')) {
       status = OrderStatus.delivered;
     } else if (statusStr.contains('CANCEL')) {
       status = OrderStatus.cancelled;
-    } else if (statusStr.contains('DECLINE') || statusStr.contains('REJECT') || statusStr.contains('TIMEOUT')) {
+    } else if (statusStr.contains('DECLINE') ||
+        statusStr.contains('REJECT') ||
+        statusStr.contains('TIMEOUT')) {
       status = OrderStatus.declined;
     }
 
@@ -275,7 +302,9 @@ class OrderModel {
         ? json['payment'] as Map<String, dynamic>
         : null;
 
-    final payModeStr = (paymentObj?['mode'] ?? json['paymentMode'])?.toString().toUpperCase() ?? '';
+    final payModeStr =
+        (paymentObj?['mode'] ?? json['paymentMode'])?.toString().toUpperCase() ??
+            '';
     PaymentMethodType method = PaymentMethodType.upi;
     if (payModeStr.contains('COD') || payModeStr.contains('CASH')) {
       method = PaymentMethodType.cod;
@@ -285,12 +314,18 @@ class OrderModel {
       method = PaymentMethodType.netBanking;
     }
 
-    final payStatusStr = (paymentObj?['status'] ?? json['paymentStatus'])?.toString().toUpperCase() ?? '';
+    final payStatusStr =
+        (paymentObj?['status'] ?? json['paymentStatus'])?.toString().toUpperCase() ??
+            '';
     PaymentStatus pStatus = method == PaymentMethodType.cod
         ? PaymentStatus.codPending
         : PaymentStatus.paid;
     if (payStatusStr.contains('PAID') || payStatusStr.contains('COMPLETED')) {
       pStatus = PaymentStatus.paid;
+    } else if (payStatusStr.contains('PENDING')) {
+      pStatus = method == PaymentMethodType.cod
+          ? PaymentStatus.codPending
+          : PaymentStatus.pending;
     } else if (payStatusStr.contains('FAIL')) {
       pStatus = PaymentStatus.failed;
     } else if (payStatusStr.contains('REFUND')) {
@@ -315,15 +350,20 @@ class OrderModel {
         json['shopName']?.toString() ??
         'Mishra Ji Sweets';
 
+    final String storeId = json['storeId']?.toString() ??
+        json['shopId']?.toString() ??
+        storeSnapshot?['_id']?.toString() ??
+        '';
+
     String addressStr = 'Saved Delivery Address';
     final rawAddr = json['deliveryAddress'];
     if (rawAddr is Map<String, dynamic>) {
       final parts = [
-        rawAddr['houseNumber'],
+        rawAddr['street'] ?? rawAddr['houseNumber'],
         rawAddr['streetArea'],
         rawAddr['city'],
         rawAddr['state'],
-        rawAddr['pincode'],
+        rawAddr['pinCode'] ?? rawAddr['pincode'],
       ].where((e) => e != null && e.toString().trim().isNotEmpty).toList();
 
       addressStr = parts.isNotEmpty
@@ -342,14 +382,69 @@ class OrderModel {
       createdAt = DateTime.tryParse(dateStr) ?? DateTime.now();
     }
 
+    // Resolve items: prefer fallbackItems from current cart, or parse json['items']
+    List<CartItemModel> resolvedItems = fallbackItems ?? const [];
+    if (resolvedItems.isEmpty && json['items'] is List) {
+      final List<CartItemModel> parsedItems = [];
+      for (final raw in (json['items'] as List)) {
+        if (raw is! Map<String, dynamic>) continue;
+        final unit = raw['unit']?.toString() ?? 'PORTION';
+        final double price = raw['pricePaise'] != null
+            ? ApiConfig.paiseToRupees(raw['pricePaise'])
+            : (raw['price'] as num? ?? 0).toDouble();
+        final int qty = (raw['quantity'] as num?)?.toInt() ?? 1;
+        final String name = raw['name']?.toString() ?? 'Delicacy';
+        final String mId = raw['menuItemId']?.toString() ?? '';
+        final String? instructions = raw['cookingInstructions']?.toString();
+
+        final variant = ItemVariant(
+          id: unit,
+          unit: unit,
+          label: ApiConfig.formatMeasurementUnit(unit),
+          price: price,
+          isDefault: true,
+        );
+
+        final item = ItemModel(
+          id: raw['catalogItemId']?.toString() ?? mId,
+          menuItemId: mId,
+          shopId: storeId,
+          shopName: shopName,
+          name: name,
+          description: '',
+          imageUrl: raw['imageUrl']?.toString() ?? '',
+          category: raw['category']?.toString() ?? 'Sweets',
+          dietType: ItemModel.parseDietType(raw['dietaryType']?.toString()),
+          variants: [variant],
+        );
+
+        parsedItems.add(
+          CartItemModel(
+            id: raw['_id']?.toString() ?? 'item_${mId}_$unit',
+            item: item,
+            selectedVariant: variant,
+            quantity: qty,
+            specialInstructions:
+                instructions != null && instructions.isNotEmpty
+                    ? instructions
+                    : null,
+          ),
+        );
+      }
+      resolvedItems = parsedItems;
+    }
+
     return OrderModel(
       orderId: id,
-      shopId: json['storeId']?.toString() ?? json['shopId']?.toString() ?? '',
+      orderNumber: orderNumber,
+      kotNumber: kotNumber,
+      deliveryOtp: deliveryOtp,
+      shopId: storeId,
       shopName: shopName,
       shopAddress: shopAddress,
       fssaiLicense: json['fssaiLicense']?.toString() ?? 'FSSAI: 12723999000142',
       gstin: json['gstin']?.toString() ?? '09AAAFM1234F1Z5',
-      items: fallbackItems ?? const [],
+      items: resolvedItems,
       orderStatus: status,
       paymentStatus: pStatus,
       paymentMethod: method,
@@ -365,6 +460,79 @@ class OrderModel {
       deliveryInstructions: json['deliveryInstructions']?.toString(),
       createdAt: createdAt,
       estimatedDeliveryTime: createdAt.add(const Duration(minutes: 35)),
+    );
+  }
+}
+
+/// Real-time Driver GPS Telemetry model
+class DriverTrackingModel {
+  final String orderId;
+  final String status;
+  final String driverName;
+  final String driverPhone;
+  final String driverVehicle;
+  final double driverLatitude;
+  final double driverLongitude;
+  final double driverSpeed;
+  final double driverHeading;
+  final double? destinationLat;
+  final double? destinationLng;
+  final double distanceRemainingKm;
+  final int estimatedTransitMinutes;
+
+  const DriverTrackingModel({
+    required this.orderId,
+    required this.status,
+    required this.driverName,
+    required this.driverPhone,
+    required this.driverVehicle,
+    required this.driverLatitude,
+    required this.driverLongitude,
+    required this.driverSpeed,
+    required this.driverHeading,
+    this.destinationLat,
+    this.destinationLng,
+    required this.distanceRemainingKm,
+    required this.estimatedTransitMinutes,
+  });
+
+  factory DriverTrackingModel.fromApi(Map<String, dynamic> json) {
+    final driver = json['driver'] is Map<String, dynamic>
+        ? json['driver'] as Map<String, dynamic>
+        : <String, dynamic>{};
+    final location = json['driverLocation'] is Map<String, dynamic>
+        ? json['driverLocation'] as Map<String, dynamic>
+        : <String, dynamic>{};
+    final destination = json['destination'] is Map<String, dynamic>
+        ? json['destination'] as Map<String, dynamic>
+        : null;
+    final coords = destination?['coordinates'] is List
+        ? destination!['coordinates'] as List
+        : null;
+    final metrics = json['metrics'] is Map<String, dynamic>
+        ? json['metrics'] as Map<String, dynamic>
+        : <String, dynamic>{};
+
+    return DriverTrackingModel(
+      orderId: json['orderId']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'OUT_FOR_DELIVERY',
+      driverName: driver['name']?.toString() ?? 'Delivery Partner',
+      driverPhone: driver['phone']?.toString() ?? '',
+      driverVehicle: driver['vehicle']?.toString() ?? 'Motorcycle',
+      driverLatitude: (location['latitude'] as num?)?.toDouble() ?? 28.6180,
+      driverLongitude: (location['longitude'] as num?)?.toDouble() ?? 77.2150,
+      driverSpeed: (location['speed'] as num?)?.toDouble() ?? 0.0,
+      driverHeading: (location['heading'] as num?)?.toDouble() ?? 0.0,
+      destinationLng: coords != null && coords.isNotEmpty
+          ? (coords[0] as num?)?.toDouble()
+          : null,
+      destinationLat: coords != null && coords.length > 1
+          ? (coords[1] as num?)?.toDouble()
+          : null,
+      distanceRemainingKm:
+          (metrics['distanceRemainingKm'] as num?)?.toDouble() ?? 0.0,
+      estimatedTransitMinutes:
+          (metrics['estimatedTransitMinutes'] as num?)?.toInt() ?? 0,
     );
   }
 }

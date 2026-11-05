@@ -93,10 +93,13 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> with Si
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(AppDimensions.p16),
-            itemCount: filtered.length,
-            itemBuilder: (context, index) {
+          return RefreshIndicator(
+            onRefresh: () => ref.read(orderProvider.notifier).loadOrders(),
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppDimensions.p16),
+              itemCount: filtered.length,
+              itemBuilder: (context, index) {
               final order = filtered[index];
               final bool needsAction = order.orderStatus == OrderStatus.changesProposed;
               final bool hasRefund = order.refundAmount != null;
@@ -141,14 +144,46 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> with Si
                       children: [
                         OrderStatusBadge(status: order.orderStatus),
                         PaymentStatusBadge(status: order.paymentStatus),
+                        if (order.deliveryOtp != null &&
+                            order.deliveryOtp!.isNotEmpty &&
+                            order.orderStatus != OrderStatus.delivered &&
+                            order.orderStatus != OrderStatus.cancelled)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryTint20,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.primary),
+                            ),
+                            child: Text(
+                              'OTP: ${order.deliveryOtp}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryPressed,
+                              ),
+                            ),
+                          ),
                         if (hasRefund)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.primaryTint20,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text('Refund Active', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            child: const Text(
+                              'Refund Active',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                       ],
                     ),
@@ -196,8 +231,9 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> with Si
                 ),
               );
             },
-          );
-        }).toList(),
+          ),
+        );
+      }).toList(),
       ),
     );
   }

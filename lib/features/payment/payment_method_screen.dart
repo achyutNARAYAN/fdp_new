@@ -49,7 +49,11 @@ class _PaymentMethodScreenState extends ConsumerState<PaymentMethodScreen> {
                 subtitle: 'UPI (GPay, PhonePe, Paytm), Credit/Debit Cards, NetBanking',
                 type: PaymentMethodType.upi,
                 icon: Icons.account_balance_wallet_outlined,
-                badge: 'Test Mode: ${ApiConfig.razorpayKeyId.substring(0, 12)}...',
+                badge: ApiConfig.razorpayKeyId.isNotEmpty
+                    ? (ApiConfig.razorpayKeyId.startsWith('rzp_test_')
+                        ? 'Test Mode: ${ApiConfig.razorpayKeyId.length >= 12 ? ApiConfig.razorpayKeyId.substring(0, 12) : ApiConfig.razorpayKeyId}...'
+                        : 'Secure Payment')
+                    : 'Online Payment',
               ),
 
               const SizedBox(height: 12),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,6 +26,7 @@ class _WaitingConfirmationScreenState
     with TickerProviderStateMixin {
   late AnimationController _haloController;
   late AnimationController _floatController;
+  Timer? _pollTimer;
 
   @override
   void initState() {
@@ -40,10 +42,44 @@ class _WaitingConfirmationScreenState
       vsync: this,
       duration: const Duration(milliseconds: 3000),
     )..repeat(reverse: true);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pollOrderStatus();
+      _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+        _pollOrderStatus();
+      });
+    });
+  }
+
+  Future<void> _pollOrderStatus() async {
+    if (!mounted) return;
+    final updated = await ref
+        .read(orderProvider.notifier)
+        .fetchOrderById(widget.orderId);
+
+    if (!mounted || updated == null) return;
+
+    if (updated.orderStatus == OrderStatus.orderConfirmed ||
+        updated.orderStatus == OrderStatus.preparing ||
+        updated.orderStatus == OrderStatus.readyForPickup ||
+        updated.orderStatus == OrderStatus.outForDelivery) {
+      _pollTimer?.cancel();
+      context.go('/order-confirmed/${widget.orderId}');
+    } else if (updated.orderStatus == OrderStatus.changesProposed) {
+      _pollTimer?.cancel();
+      context.go('/shop-proposed-changes/${widget.orderId}');
+    } else if (updated.orderStatus == OrderStatus.declined) {
+      _pollTimer?.cancel();
+      context.go('/shop-declined-order/${widget.orderId}');
+    } else if (updated.orderStatus == OrderStatus.cancelled) {
+      _pollTimer?.cancel();
+      context.go('/order-details/${widget.orderId}');
+    }
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _haloController.dispose();
     _floatController.dispose();
     super.dispose();
@@ -71,12 +107,16 @@ class _WaitingConfirmationScreenState
             child: const Text('Keep Order'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              ref
-                  .read(orderProvider.notifier)
-                  .cancelOrder(reason: 'Cancelled while awaiting confirmation');
-              context.go('/order-details/${widget.orderId}');
+              _pollTimer?.cancel();
+              await ref.read(orderProvider.notifier).cancelOrderApi(
+                    orderId: widget.orderId,
+                    reason: 'Cancelled while awaiting confirmation',
+                  );
+              if (mounted) {
+                context.go('/order-details/${widget.orderId}');
+              }
             },
             child: const Text(
               'Cancel Order',
@@ -285,14 +325,21 @@ class _WaitingConfirmationScreenState
                       ),
                       child: Column(
                         children: [
-                          _summaryRow('Order Reference', '#${widget.orderId}'),
+                          _summaryRow(
+                            'Order Reference',
+                            order.orderNumber != null
+                                ? '#${order.orderNumber}'
+                                : '#${widget.orderId}',
+                          ),
                           _summaryRow(
                             'Items Count',
-                            '${order.items.length ?? 0} items',
+                            '${order.items.length} items',
                           ),
                           _summaryRow(
                             'Estimated Delivery',
-                            order.estimatedDeliveryTime?.toString() ?? '',
+                            order.estimatedDeliveryTime != null
+                                ? Formatters.formatTime(order.estimatedDeliveryTime!)
+                                : '30-45 mins',
                           ),
                           _summaryRow(
                             'Payment Status',
@@ -302,8 +349,46 @@ class _WaitingConfirmationScreenState
                           ),
                           _summaryRow(
                             'Delivery Address',
-                            order.deliveryAddress ?? '',
+                            order.deliveryAddress,
                           ),
+                          if (order.deliveryOtp != null &&
+                              order.deliveryOtp!.isNotEmpty) ...[
+                            const Divider(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Delivery OTP',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primaryPressed,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryTint20,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border:
+                                        Border.all(color: AppColors.primary),
+                                  ),
+                                  child: Text(
+                                    order.deliveryOtp!,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 2.0,
+                                      color: AppColors.primaryPressed,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),

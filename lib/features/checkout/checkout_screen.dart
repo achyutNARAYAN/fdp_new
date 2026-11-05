@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
-import '../../core/config/api_config.dart';
 import '../../core/services/razorpay_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -28,6 +27,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   final RazorpayService _razorpayService = RazorpayService();
   PaymentMethodType _selectedPaymentMethod = PaymentMethodType.upi;
   bool _isProcessing = false;
+  String? _pendingOrderId;
+  String? _pendingGatewayOrderId;
 
   @override
   void initState() {
@@ -45,12 +46,46 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     super.dispose();
   }
 
-  void _handleRazorpaySuccess(PaymentSuccessResponse response) async {
+  Future<void> _handleRazorpaySuccess(PaymentSuccessResponse response) async {
+    if (_pendingOrderId == null) return;
     if (mounted) setState(() => _isProcessing = true);
-    await _placeOrderAndNavigate(
-      method: PaymentMethodType.upi,
-      razorpayPaymentId: response.paymentId,
-    );
+
+    try {
+      // Step 2: Verify Payment Signature on backend
+      final gatewayOrderId =
+          response.orderId ?? _pendingGatewayOrderId ?? '';
+      final gatewayPaymentId = response.paymentId ?? '';
+      final gatewaySignature = response.signature ?? '';
+
+      await ref.read(orderProvider.notifier).verifyOnlinePayment(
+            orderId: _pendingOrderId!,
+            gatewayOrderId: gatewayOrderId,
+            gatewayPaymentId: gatewayPaymentId,
+            gatewaySignature: gatewaySignature,
+          );
+
+      // Empty cart after successful verification
+      await ref.read(cartProvider.notifier).clearCart();
+
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+
+      final confirmedId = _pendingOrderId!;
+      _pendingOrderId = null;
+      _pendingGatewayOrderId = null;
+
+      // Navigate to live waiting confirmation screen
+      context.go('/waiting-confirmation/$confirmedId');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment verification failed: $e'),
+          backgroundColor: AppColors.accent,
+        ),
+      );
+    }
   }
 
   void _handleRazorpayError(PaymentFailureResponse response) {
@@ -61,7 +96,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         content: Text(
           response.message != null && response.message!.isNotEmpty
               ? 'Payment: ${response.message}'
-              : 'Payment was cancelled or failed.',
+              : 'Payment was cancelled or failed. You can retry anytime.',
         ),
         backgroundColor: AppColors.accent,
       ),
@@ -78,58 +113,85 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
 
     final locationState = ref.read(locationProvider);
-    final address = locationState.selectedAddress?.fullAddress ??
-        locationState.selectedAddress?.title ??
+    final selectedAddr = locationState.selectedAddress;
+    final address = selectedAddr?.fullAddress ??
+        selectedAddr?.title ??
         'Hazratganj, Lucknow, UP';
 
     if (_selectedPaymentMethod == PaymentMethodType.cod) {
       // Direct Cash on Delivery placement
       setState(() => _isProcessing = true);
-      await _placeOrderAndNavigate(
-        method: PaymentMethodType.cod,
-        address: address,
-      );
+      await _placeCodOrderAndNavigate(address: address);
     } else {
-      // Trigger Razorpay Payment Gateway
+      // Online Payment (2-Step Lifecycle: Checkout -> Initiate -> Gateway -> Verify)
       setState(() => _isProcessing = true);
       final authState = ref.read(authProvider);
 
-      await _razorpayService.openCheckout(
-        context: context,
-        amountRupees: cart.grandTotal,
-        shopName: cart.shopName ?? 'Mishra Ji Sweets',
-        userEmail: authState.user?.email,
-        userPhone: authState.phoneNumber,
-        orderDescription: '${cart.totalItemCount} confectionery items',
-      );
-      if (mounted) {
+      try {
+        // Step 1: Create Order on backend with ONLINE mode (PAYMENT_PENDING)
+        final createdOrder = await ref.read(orderProvider.notifier).placeOrder(
+              cart: cart,
+              paymentMethod: _selectedPaymentMethod,
+              deliveryAddress: address,
+              addressId: selectedAddr?.id,
+              deliveryInstructions: _noteController.text.trim(),
+            );
+
+        _pendingOrderId = createdOrder.orderId;
+
+        // Step 2: Initiate Payment Order with Gateway
+        final initData = await ref
+            .read(orderProvider.notifier)
+            .initiateOnlinePayment(createdOrder.orderId);
+
+        _pendingGatewayOrderId = initData['gatewayOrderId']?.toString();
+        final String? keyId = initData['keyId']?.toString();
+        final int? amountPaise = (initData['amountPaise'] as num?)?.toInt();
+
+        if (!mounted) return;
+
+        // Step 3: Open Razorpay sheet
+        await _razorpayService.openCheckout(
+          context: context,
+          amountRupees: cart.grandTotal,
+          shopName: cart.shopName ?? 'Mishra Ji Sweets',
+          gatewayOrderId: _pendingGatewayOrderId,
+          keyId: keyId,
+          amountPaise: amountPaise,
+          userEmail: authState.user?.email,
+          userPhone: authState.phoneNumber,
+          orderDescription:
+              'Order #${createdOrder.orderNumber ?? createdOrder.orderId}',
+        );
+
+        if (mounted) {
+          setState(() => _isProcessing = false);
+        }
+      } catch (e) {
+        if (!mounted) return;
         setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not initiate online payment: $e'),
+            backgroundColor: AppColors.accent,
+          ),
+        );
       }
     }
   }
 
-  Future<void> _placeOrderAndNavigate({
-    required PaymentMethodType method,
-    String? razorpayPaymentId,
-    String? address,
-  }) async {
+  Future<void> _placeCodOrderAndNavigate({required String address}) async {
     final cart = ref.read(cartProvider);
     final locationState = ref.read(locationProvider);
     final selectedAddr = locationState.selectedAddress;
 
-    final deliveryAddress = address ??
-        selectedAddr?.fullAddress ??
-        selectedAddr?.title ??
-        'Hazratganj, Lucknow, UP';
-
     try {
       final createdOrder = await ref.read(orderProvider.notifier).placeOrder(
             cart: cart,
-            paymentMethod: method,
-            deliveryAddress: deliveryAddress,
+            paymentMethod: PaymentMethodType.cod,
+            deliveryAddress: address,
             addressId: selectedAddr?.id,
             deliveryInstructions: _noteController.text.trim(),
-            razorpayPaymentId: razorpayPaymentId,
           );
 
       // Empty the cart after successful order creation
@@ -138,14 +200,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       if (!mounted) return;
       setState(() => _isProcessing = false);
 
-      // Navigate to the live waiting confirmation screen
+      // Navigate to live waiting confirmation screen
       context.go('/waiting-confirmation/${createdOrder.orderId}');
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not place order: $e'),
+          content: Text('Could not place COD order: $e'),
           backgroundColor: AppColors.accent,
         ),
       );

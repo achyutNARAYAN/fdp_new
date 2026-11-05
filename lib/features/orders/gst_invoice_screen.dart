@@ -170,7 +170,7 @@ class GstInvoiceScreen extends ConsumerWidget {
                                       style: AppTypography.caption,
                                     ),
                                     Text(
-                                      'Order ID: #${order.orderId}',
+                                      'Order ID: #${order.orderNumber ?? order.orderId}',
                                       textAlign: TextAlign.end,
                                       style: AppTypography.caption,
                                     ),

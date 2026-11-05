@@ -9,34 +9,89 @@ import 'package:fdp/features/orders/providers/order_provider.dart';
 import 'package:fdp/core/widgets/badges/order_status_badge.dart';
 import 'package:fdp/core/widgets/badges/payment_status_badge.dart';
 import 'package:fdp/core/widgets/badges/diet_marker.dart';
+import 'package:fdp/core/widgets/buttons/app_primary_button.dart';
 import 'package:fdp/core/widgets/buttons/app_secondary_button.dart';
 import 'package:fdp/core/widgets/layout/no_order_data.dart';
+import 'package:fdp/features/orders/models/order_model.dart';
 
-class OrderDetailsScreen extends ConsumerWidget {
+class OrderDetailsScreen extends ConsumerStatefulWidget {
   final String orderId;
 
   const OrderDetailsScreen({super.key, required this.orderId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
+}
+
+class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadDetails();
+    });
+  }
+
+  Future<void> _loadDetails() async {
+    final orderState = ref.read(orderProvider);
+    final exists = orderState.pastOrders.any((o) => o.orderId == widget.orderId) ||
+        orderState.activeOrder?.orderId == widget.orderId;
+
+    if (!exists) {
+      setState(() => _isLoading = true);
+    }
+    await ref.read(orderProvider.notifier).fetchOrderById(widget.orderId);
+    if (mounted && _isLoading) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final orderState = ref.watch(orderProvider);
     final order =
-        orderState.pastOrders.where((o) => o.orderId == orderId).firstOrNull ??
-        (orderState.activeOrder?.orderId == orderId
+        orderState.pastOrders.where((o) => o.orderId == widget.orderId).firstOrNull ??
+        (orderState.activeOrder?.orderId == widget.orderId
             ? orderState.activeOrder
             : null);
-    if (order == null) return const NoOrderData();
+
+    if (order == null) {
+      if (_isLoading) {
+        return const Scaffold(
+          backgroundColor: AppColors.background,
+          body: Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          ),
+        );
+      }
+      return const NoOrderData();
+    }
 
     final bool isCancellable = order.isCancellable;
     final bool hasRefund = order.refundAmount != null;
+    final bool isActive = order.orderStatus != OrderStatus.delivered &&
+        order.orderStatus != OrderStatus.cancelled &&
+        order.orderStatus != OrderStatus.declined &&
+        order.orderStatus != OrderStatus.returned;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Order #$orderId'),
+        title: Text(
+          order.orderNumber != null
+              ? 'Order #${order.orderNumber}'
+              : 'Order #${widget.orderId}',
+        ),
         backgroundColor: AppColors.surface,
         actions: [
-          IconButton(icon: const Icon(Icons.share_outlined), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref
+                .read(orderProvider.notifier)
+                .fetchOrderById(widget.orderId),
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -86,11 +141,99 @@ class OrderDetailsScreen extends ConsumerWidget {
                       PaymentStatusBadge(status: order.paymentStatus),
                     ],
                   ),
+                  if (order.kotNumber != null &&
+                      order.kotNumber!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Kitchen KOT: ${order.kotNumber}',
+                      style: AppTypography.caption.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
 
             const SizedBox(height: 16),
+
+            // Delivery OTP Card (Prominently displayed)
+            if (order.deliveryOtp != null &&
+                order.deliveryOtp!.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(AppDimensions.p16),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTint20,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                  border: Border.all(color: AppColors.primary, width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.vpn_key_rounded,
+                      color: AppColors.primaryPressed,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Delivery Verification OTP',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryPressed,
+                            ),
+                          ),
+                          const Text(
+                            'Provide to driver upon food handover',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.primary),
+                      ),
+                      child: Text(
+                        order.deliveryOtp!,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2.0,
+                          color: AppColors.primaryPressed,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Active Track Live Order CTA
+            if (isActive) ...[
+              AppPrimaryButton(
+                label: 'Track Order & Live Milestones',
+                icon: Icons.timeline_rounded,
+                onPressed: () =>
+                    context.push('/order-tracking/${widget.orderId}'),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // Refund Section (appears ONLY when refund exists)
             if (hasRefund) ...[
@@ -113,26 +256,24 @@ class OrderDetailsScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Refund Processed',
-                            style: AppTypography.itemName,
-                          ),
-                          const SizedBox(height: 2),
                           Text(
-                            'Amount: ${Formatters.formatCurrency(order.refundAmount!)} • Ref: ${order.refundReference ?? ""}',
-                            style: AppTypography.bodySmall,
+                            'Refund Initiated: ${Formatters.formatCurrency(order.refundAmount!)}',
+                            style: AppTypography.itemName.copyWith(
+                              color: AppColors.primaryPressed,
+                            ),
                           ),
+                          Text(
+                            'Ref: ${order.refundReference ?? "Processing"}',
+                            style: AppTypography.caption,
+                          ),
+                          if (order.refundEta != null)
+                            Text(
+                              'Expected by ${Formatters.formatDate(order.refundEta!)}',
+                              style: AppTypography.caption.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                         ],
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => context.push('/refund-status/$orderId'),
-                      child: const Text(
-                        'Track',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
                       ),
                     ),
                   ],
@@ -141,7 +282,7 @@ class OrderDetailsScreen extends ConsumerWidget {
               const SizedBox(height: 16),
             ],
 
-            // Items List
+            // Item Details List
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -154,53 +295,56 @@ class OrderDetailsScreen extends ConsumerWidget {
                 children: [
                   const Text('Items Ordered', style: AppTypography.itemName),
                   const SizedBox(height: 12),
-                  ...order.items.map((cartItem) {
-                    return Padding(
+                  ...order.items.map(
+                    (ci) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          DietMarker(dietType: cartItem.item.dietType),
-                          const SizedBox(width: 10),
+                          DietMarker(dietType: ci.item.dietType),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '${cartItem.quantity}x ${cartItem.item.name}',
-                                  style: AppTypography.itemName.copyWith(
-                                    fontSize: 14,
+                                  '${ci.quantity}x ${ci.item.name}',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 Text(
-                                  cartItem.selectedVariant.label,
+                                  ci.selectedVariant.label,
                                   style: AppTypography.caption,
                                 ),
-                                if (cartItem.cakeMessage != null)
+                                if (ci.specialInstructions != null &&
+                                    ci.specialInstructions!.isNotEmpty)
                                   Text(
-                                    'Cake Message: "${cartItem.cakeMessage}"',
-                                    style: AppTypography.caption,
+                                    'Note: ${ci.specialInstructions}',
+                                    style: AppTypography.caption.copyWith(
+                                      fontStyle: FontStyle.italic,
+                                    ),
                                   ),
                               ],
                             ),
                           ),
                           Text(
-                            Formatters.formatCurrency(cartItem.totalPrice),
-                            style: AppTypography.itemName.copyWith(
-                              fontSize: 14,
+                            Formatters.formatCurrency(ci.totalPrice),
+                            style: AppTypography.bodySmall.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-                    );
-                  }),
+                    ),
+                  ),
                 ],
               ),
             ),
 
             const SizedBox(height: 16),
 
-            // Bill Breakdown
+            // Detailed Bill Receipt
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -211,41 +355,29 @@ class OrderDetailsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Payment Summary', style: AppTypography.itemName),
+                  const Text('Bill Breakdown', style: AppTypography.itemName),
                   const SizedBox(height: 12),
-                  _billRow(
-                    'Subtotal',
-                    Formatters.formatCurrency(order.subtotal),
-                  ),
+                  _billRow('Items Subtotal', Formatters.formatCurrency(order.subtotal)),
                   if (order.discountAmount > 0)
                     _billRow(
                       'Discount',
                       '-${Formatters.formatCurrency(order.discountAmount)}',
-                      textColor: AppColors.accentPressed,
+                      textColor: AppColors.primary,
                     ),
-                  _billRow(
-                    'Delivery Fee',
-                    Formatters.formatCurrency(order.deliveryFee),
-                  ),
-                  _billRow(
-                    'Packaging Fee',
-                    Formatters.formatCurrency(order.packagingFee),
-                  ),
-                  _billRow(
-                    'Platform Fee',
-                    Formatters.formatCurrency(order.platformFee),
-                  ),
-                  _billRow('Taxes', Formatters.formatCurrency(order.taxes)),
+                  _billRow('Delivery Fee', Formatters.formatCurrency(order.deliveryFee)),
+                  _billRow('Packaging Fee', Formatters.formatCurrency(order.packagingFee)),
+                  _billRow('Platform Fee', Formatters.formatCurrency(order.platformFee)),
+                  _billRow('Section 9(5) GST', Formatters.formatCurrency(order.taxes)),
                   if (order.tipAmount > 0)
-                    _billRow(
-                      'Delivery Tip',
-                      Formatters.formatCurrency(order.tipAmount),
-                    ),
-                  const Divider(height: 20),
+                    _billRow('Rider Tip', Formatters.formatCurrency(order.tipAmount)),
+                  const Divider(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Total Amount', style: AppTypography.heading2),
+                      const Text(
+                        'Grand Total',
+                        style: AppTypography.heading2,
+                      ),
                       Text(
                         Formatters.formatCurrency(order.totalAmount),
                         style: AppTypography.price.copyWith(fontSize: 20),
@@ -292,7 +424,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                   child: AppSecondaryButton(
                     label: 'GST Tax Invoice',
                     icon: Icons.receipt_outlined,
-                    onPressed: () => context.push('/invoice/$orderId'),
+                    onPressed: () => context.push('/invoice/${widget.orderId}'),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -312,7 +444,8 @@ class OrderDetailsScreen extends ConsumerWidget {
                 label: 'Cancel Order',
                 borderColor: AppColors.accent,
                 textColor: AppColors.accent,
-                onPressed: () => context.push('/cancel-order/$orderId'),
+                onPressed: () =>
+                    context.push('/cancel-order/${widget.orderId}'),
               ),
             ],
 

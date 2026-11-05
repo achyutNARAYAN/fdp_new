@@ -23,9 +23,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
   bool _isGoogleLoading = false;
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
+  late final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    serverClientId: ApiConfig.googleServerClientId,
+    serverClientId: ApiConfig.googleServerClientId.isNotEmpty
+        ? ApiConfig.googleServerClientId
+        : null,
   );
 
   @override

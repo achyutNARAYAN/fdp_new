@@ -20,6 +20,7 @@ class RazorpayService {
   BuildContext? _lastContext;
   double? _lastAmountRupees;
   String? _lastShopName;
+  String? _lastGatewayOrderId;
 
   bool get isSupportedPlatform {
     if (kIsWeb) return false;
@@ -79,6 +80,9 @@ class RazorpayService {
     required BuildContext context,
     required double amountRupees,
     required String shopName,
+    String? gatewayOrderId,
+    String? keyId,
+    int? amountPaise,
     String? userEmail,
     String? userPhone,
     String? orderDescription,
@@ -86,8 +90,10 @@ class RazorpayService {
     _lastContext = context;
     _lastAmountRupees = amountRupees;
     _lastShopName = shopName;
+    _lastGatewayOrderId = gatewayOrderId;
 
-    final int amountPaise = ApiConfig.rupeesToPaise(amountRupees);
+    final int calculatedPaise =
+        amountPaise ?? ApiConfig.rupeesToPaise(amountRupees);
 
     // Sanitize phone number: Razorpay strictly expects numeric digits (at least 10)
     String? sanitizedPhone;
@@ -105,11 +111,15 @@ class RazorpayService {
     }
 
     final Map<String, dynamic> options = {
-      'key': ApiConfig.razorpayKeyId,
-      'amount': amountPaise,
+      'key': (keyId != null && keyId.isNotEmpty)
+          ? keyId
+          : ApiConfig.razorpayKeyId,
+      'amount': calculatedPaise,
       'currency': 'INR',
       'name': shopName.isNotEmpty ? shopName : 'Mishra Ji Sweets',
       'description': orderDescription ?? 'Sweet & Savoury Order',
+      if (gatewayOrderId != null && gatewayOrderId.isNotEmpty)
+        'order_id': gatewayOrderId,
       'timeout': 300, // 5 minutes
       'prefill': {
         if (sanitizedPhone != null && sanitizedPhone.isNotEmpty) 'contact': sanitizedPhone,
@@ -233,11 +243,15 @@ class RazorpayService {
                     Navigator.pop(ctx);
                     final String mockPaymentId =
                         'pay_rzp_test_${DateTime.now().millisecondsSinceEpoch}';
+                    final String mockOrderId = _lastGatewayOrderId ??
+                        'order_${DateTime.now().millisecondsSinceEpoch}';
+                    final String mockSignature =
+                        'sig_${DateTime.now().millisecondsSinceEpoch}';
                     _onSuccess?.call(
                       PaymentSuccessResponse(
                         mockPaymentId,
-                        'order_${DateTime.now().millisecondsSinceEpoch}',
-                        'sig_${DateTime.now().millisecondsSinceEpoch}',
+                        mockOrderId,
+                        mockSignature,
                         null,
                       ),
                     );

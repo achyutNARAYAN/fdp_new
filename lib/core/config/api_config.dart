@@ -1,25 +1,57 @@
+import 'env_config.dart';
+
 class ApiConfig {
   ApiConfig._();
 
-  /// Primary Production API Base URL (Render cloud)
-  static const String baseUrl = 'https://fdp-tkl0.onrender.com/api/v1';
+  /// Primary API Base URL
+  static String get baseUrl {
+    const fromDefine = String.fromEnvironment('API_BASE_URL');
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return EnvConfig.get(
+      'API_BASE_URL',
+      defaultValue: 'https://fdp-tkl0.onrender.com/api/v1',
+    );
+  }
 
   /// Root Server URL (for /health and /health/ready probes)
-  static const String rootUrl = 'https://fdp-tkl0.onrender.com';
+  static String get rootUrl {
+    const fromDefine = String.fromEnvironment('API_ROOT_URL');
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return EnvConfig.get(
+      'API_ROOT_URL',
+      defaultValue: 'https://fdp-tkl0.onrender.com',
+    );
+  }
 
-  /// Network Timeout (Render cold starts can take up to 45s)
-  static const Duration timeout = Duration(seconds: 45);
+  /// Network Timeout
+  static Duration get timeout {
+    final timeoutSec = EnvConfig.get('API_TIMEOUT_SECONDS');
+    final seconds = int.tryParse(timeoutSec) ?? 45;
+    return Duration(seconds: seconds);
+  }
 
-  /// Google OAuth Web Client ID (from Google Cloud Console)
-  /// If provided, Android Google Play Services returns an OpenID idToken for the backend
-  static const String googleServerClientId =
-      '251374570662-1doulus75vv493d0o572e8vkndjdbtc0.apps.googleusercontent.com';
+  /// Google OAuth Web Client ID (from Google Cloud Console via .env)
+  static String get googleServerClientId {
+    const fromDefine = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return EnvConfig.get('GOOGLE_SERVER_CLIENT_ID');
+  }
 
-  /// Razorpay Payment Gateway Key (Public Key ID only - Secret Key must NEVER be on frontend)
-  static const String razorpayKeyId = 'rzp_test_Tvfe16OIBHNqTe';
+  /// Razorpay Payment Gateway Key ID (Public Key ID only via .env)
+  static String get razorpayKeyId {
+    const fromDefine = String.fromEnvironment('RAZORPAY_KEY_ID');
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return EnvConfig.get('RAZORPAY_KEY_ID');
+  }
 
   /// Enable full API request/response logging in terminal
-  static bool enableLogging = true;
+  static bool get enableLogging {
+    const fromDefine = bool.fromEnvironment('ENABLE_LOGGING');
+    if (fromDefine) return true;
+    final envVal = EnvConfig.get('ENABLE_LOGGING');
+    if (envVal.isNotEmpty) return envVal.toLowerCase() == 'true';
+    return false;
+  }
 
   /// Convert paise (integer) to Rupees (double)
   /// e.g. 90000 paise -> ₹900.00
