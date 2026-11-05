@@ -8,8 +8,16 @@ enum ShopStatus {
   final String label;
   const ShopStatus(this.label);
 
-  static ShopStatus fromApi(String? apiStatus, bool isAcceptingOrders) {
-    if (apiStatus == null || apiStatus.isEmpty) return ShopStatus.unknown;
+  static ShopStatus fromApi(
+    String? apiStatus,
+    bool isAcceptingOrders, {
+    bool? isOpen,
+  }) {
+    if (isOpen == false) return ShopStatus.closed;
+    if (isOpen == true && isAcceptingOrders) return ShopStatus.open;
+    if (apiStatus == null || apiStatus.isEmpty) {
+      return isAcceptingOrders ? ShopStatus.open : ShopStatus.closed;
+    }
     if (!isAcceptingOrders) return ShopStatus.closed;
     switch (apiStatus.toUpperCase()) {
       case 'ACTIVE':
@@ -45,6 +53,8 @@ class ShopModel {
   final bool isSponsored;
   final bool isAcceptingOrders;
   final List<double>? coordinates; // [longitude, latitude]
+  final String distanceTier; // TIER_1, TIER_2, TIER_3
+  final int deliveryFeePaise;
 
   const ShopModel({
     required this.id,
@@ -66,6 +76,8 @@ class ShopModel {
     this.isSponsored = false,
     this.isAcceptingOrders = false,
     this.coordinates,
+    this.distanceTier = '',
+    this.deliveryFeePaise = 0,
   });
 
   bool get isOpen => status == ShopStatus.open && isAcceptingOrders;
@@ -73,15 +85,16 @@ class ShopModel {
   bool get isClosed =>
       status == ShopStatus.closed ||
       (status != ShopStatus.unknown && !isAcceptingOrders);
+  double get deliveryFeeRupees => deliveryFeePaise / 100.0;
 
   factory ShopModel.fromApiJson(Map<String, dynamic> json) {
     final addressMap = json['address'] as Map<String, dynamic>?;
     String formattedAddress = '';
     if (addressMap != null) {
-      final street = addressMap['street'] ?? '';
+      final street = addressMap['street'] ?? addressMap['streetArea'] ?? '';
       final landmark = addressMap['landmark'] ?? '';
       final city = addressMap['city'] ?? '';
-      final pin = addressMap['pinCode'] ?? '';
+      final pin = addressMap['pinCode'] ?? addressMap['pincode'] ?? '';
       formattedAddress = [
         street,
         landmark,
@@ -99,25 +112,48 @@ class ShopModel {
       if (list.length >= 2) {
         coords = [(list[0] as num).toDouble(), (list[1] as num).toDouble()];
       }
+    } else if (json['coordinates'] is List) {
+      final list = json['coordinates'] as List;
+      if (list.length >= 2) {
+        coords = [(list[0] as num).toDouble(), (list[1] as num).toDouble()];
+      }
     }
 
     final String? apiStatus = json['status']?.toString();
+    final bool? explicitIsOpen = json['isOpen'] is bool
+        ? json['isOpen'] as bool
+        : null;
     final bool accepting = json['isAcceptingOrders'] is bool
         ? json['isAcceptingOrders'] as bool
-        : apiStatus?.toUpperCase() == 'ACTIVE';
+        : (explicitIsOpen ?? (apiStatus?.toUpperCase() == 'ACTIVE'));
+
+    final int reviews = json['reviewCount'] is num
+        ? (json['reviewCount'] as num).toInt()
+        : (json['ratingCount'] is num
+            ? (json['ratingCount'] as num).toInt()
+            : 0);
+
+    final String prep = json['estimatedDeliveryMinutes'] != null
+        ? '${json['estimatedDeliveryMinutes']} mins'
+        : (json['prepTimeMinutes']?.toString() ?? '');
+
+    final String img = (json['bannerUrl'] != null &&
+            json['bannerUrl'].toString().isNotEmpty)
+        ? json['bannerUrl'].toString()
+        : (json['imageUrl']?.toString() ?? '');
 
     return ShopModel(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       storeCode: json['storeCode']?.toString() ?? '',
-      name: json['tradeName']?.toString() ?? json['name']?.toString() ?? '',
+      name: json['name']?.toString() ?? json['tradeName']?.toString() ?? '',
       tradeName: json['tradeName']?.toString() ?? '',
-      imageUrl: json['imageUrl']?.toString() ?? '',
+      imageUrl: img,
       rating: (json['rating'] as num?)?.toDouble() ?? 0,
-      ratingCount: json['ratingCount'] is int ? json['ratingCount'] : 0,
+      ratingCount: reviews,
       distanceKm: (json['distanceKm'] as num?)?.toDouble() ?? 0,
-      prepTimeMinutes: json['prepTimeMinutes']?.toString() ?? '',
-      status: ShopStatus.fromApi(apiStatus, accepting),
-      isVerified: json['status'] == 'ACTIVE',
+      prepTimeMinutes: prep,
+      status: ShopStatus.fromApi(apiStatus, accepting, isOpen: explicitIsOpen),
+      isVerified: json['status'] == 'ACTIVE' || explicitIsOpen == true,
       fssaiLicense: json['fssaiLicence']?.toString() ?? '',
       gstin: json['taxProfile']?['gstin']?.toString() ?? '',
       address: formattedAddress,
@@ -129,6 +165,8 @@ class ShopModel {
       supportsPreOrder: json['supportsPreOrder'] == true,
       isSponsored: json['isSponsored'] == true,
       coordinates: coords,
+      distanceTier: json['distanceTier']?.toString() ?? '',
+      deliveryFeePaise: (json['deliveryFeePaise'] as num?)?.toInt() ?? 0,
     );
   }
 }

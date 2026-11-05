@@ -19,27 +19,36 @@ class _OffersCouponsScreenState extends ConsumerState<OffersCouponsScreen> {
 
   final List<Map<String, dynamic>> _coupons = [
     {
-      'code': 'MISHRA10',
-      'discount': 50.0,
-      'title': 'Flat ₹50 OFF',
-      'description': 'Enjoy ₹50 off on authentic sweets & confectionery.',
-      'minOrder': 200.0,
-    },
-    {
-      'code': 'SWEETFEAST',
+      'code': 'WELCOME50',
       'discount': 100.0,
-      'title': '₹100 Celebration Discount',
-      'description': 'Applicable on party boxes and bulk dessert orders.',
-      'minOrder': 500.0,
+      'title': '50% OFF up to ₹100',
+      'description': '50% OFF up to ₹100 on orders above ₹199',
+      'minOrder': 199.0,
     },
     {
-      'code': 'GELATOFUN',
-      'discount': 30.0,
-      'title': '₹30 Gelato Treat',
-      'description': 'Discount for artisanal ice-cream and cold tubs.',
-      'minOrder': 150.0,
+      'code': 'FLAT100',
+      'discount': 100.0,
+      'title': 'Flat ₹100 OFF',
+      'description': 'Flat ₹100 OFF on orders above ₹399',
+      'minOrder': 399.0,
+    },
+    {
+      'code': 'SWEET20',
+      'discount': 150.0,
+      'title': '20% OFF up to ₹150',
+      'description': '20% OFF up to ₹150 on orders above ₹299',
+      'minOrder': 299.0,
+    },
+    {
+      'code': 'FREESHIP',
+      'discount': 40.0,
+      'title': 'Free Delivery (Save ₹40)',
+      'description': 'Waives ₹40 delivery fee on orders above ₹249',
+      'minOrder': 249.0,
     },
   ];
+
+  bool _isApplying = false;
 
   @override
   void dispose() {
@@ -47,15 +56,38 @@ class _OffersCouponsScreenState extends ConsumerState<OffersCouponsScreen> {
     super.dispose();
   }
 
-  void _apply(String code, double discount) {
-    ref.read(cartProvider.notifier).applyCoupon(code, discount);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Coupon "$code" applied! Saved ${Formatters.formatCurrency(discount)}'),
-        backgroundColor: AppColors.primary,
-      ),
-    );
-    context.pop();
+  Future<void> _apply(String code) async {
+    setState(() => _isApplying = true);
+    try {
+      await ref.read(cartProvider.notifier).applyCoupon(code);
+      if (mounted) {
+        final cart = ref.read(cartProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Coupon "$code" applied! Saved ${Formatters.formatCurrency(cart.discountAmount)}',
+            ),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        final err = ref.read(cartProvider.notifier).lastError ??
+            e.toString().replaceAll('Exception: ', '');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(err),
+            backgroundColor: AppColors.accent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isApplying = false);
+      }
+    }
   }
 
   @override
@@ -96,13 +128,21 @@ class _OffersCouponsScreenState extends ConsumerState<OffersCouponsScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () {
-                        final code = _customCodeController.text.trim().toUpperCase();
-                        if (code.isNotEmpty) {
-                          _apply(code, 40.0);
-                        }
-                      },
-                      child: const Text('Apply'),
+                      onPressed: _isApplying
+                          ? null
+                          : () {
+                              final code = _customCodeController.text.trim().toUpperCase();
+                              if (code.isNotEmpty) {
+                                _apply(code);
+                              }
+                            },
+                      child: _isApplying
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Apply'),
                     ),
                   ],
                 ),
@@ -119,7 +159,6 @@ class _OffersCouponsScreenState extends ConsumerState<OffersCouponsScreen> {
                   itemBuilder: (context, index) {
                     final item = _coupons[index];
                     final String code = item['code'] as String;
-                    final double discount = item['discount'] as double;
                     final double minOrder = item['minOrder'] as double;
                     final bool isApplied = cart.appliedCouponCode == code;
                     final bool isEligible = cart.subtotal >= minOrder;
@@ -171,7 +210,7 @@ class _OffersCouponsScreenState extends ConsumerState<OffersCouponsScreen> {
                                     foregroundColor: isEligible ? AppColors.onPrimary : AppColors.textSecondary,
                                     visualDensity: VisualDensity.compact,
                                   ),
-                                  onPressed: isEligible ? () => _apply(code, discount) : null,
+                                  onPressed: (isEligible && !_isApplying) ? () => _apply(code) : null,
                                   child: const Text('APPLY'),
                                 ),
                             ],

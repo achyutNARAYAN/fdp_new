@@ -1,13 +1,40 @@
 import '../network/api_client.dart';
+import '../constants/api_constants.dart';
 import 'package:fdp/features/item/models/shop_model.dart';
 import 'package:fdp/features/item/models/item_model.dart';
+import 'package:fdp/features/item/models/discovery_feed_model.dart';
 
 class StoreApiService {
   final ApiClient _client;
 
   StoreApiService({ApiClient? client}) : _client = client ?? globalApiClient;
 
-  /// Fetch stores with proximity or category filter
+  /// Hyperlocal Tiered Discovery Feed (Home Screen Feed)
+  /// GET /stores/discovery/feed?lng={lng}&lat={lat}&category={category}&search={search}
+  Future<DiscoveryFeedModel> getDiscoveryFeed({
+    required double lng,
+    required double lat,
+    String? category,
+    String? search,
+  }) async {
+    final qp = <String, dynamic>{
+      'lng': lng,
+      'lat': lat,
+    };
+    if (category != null && category.isNotEmpty) qp['category'] = category;
+    if (search != null && search.isNotEmpty) qp['search'] = search;
+
+    final res = await _client.get(
+      ApiConstants.storesDiscoveryFeed,
+      queryParams: qp,
+    );
+    if (res.data is Map<String, dynamic>) {
+      return DiscoveryFeedModel.fromApi(res.data as Map<String, dynamic>);
+    }
+    return const DiscoveryFeedModel();
+  }
+
+  /// Fetch stores with proximity or category filter via discovery feed
   Future<List<ShopModel>> getStores({
     String? category,
     String? status,
@@ -19,80 +46,62 @@ class StoreApiService {
     int? page,
     int? limit,
   }) async {
-    final qp = <String, dynamic>{};
-    if (page != null) qp['page'] = page;
-    if (limit != null) qp['limit'] = limit;
-    if (category != null && category.isNotEmpty) qp['category'] = category;
-    if (status != null && status.isNotEmpty) qp['status'] = status;
-    if (search != null && search.isNotEmpty) qp['search'] = search;
-    if (nearLng != null) qp['nearLng'] = nearLng;
-    if (nearLat != null) qp['nearLat'] = nearLat;
-    if (maxDistanceKm != null) qp['maxDistanceKm'] = maxDistanceKm;
-    if (isAcceptingOrders != null) qp['isAcceptingOrders'] = isAcceptingOrders;
+    final double lng = nearLng ?? 77.089;
+    final double lat = nearLat ?? 28.490;
 
-    dynamic responseData;
-    try {
-      final res = await _client.get(
-        '/stores/customer',
-        queryParams: qp.isNotEmpty ? qp : null,
-      );
-      responseData = res.data;
-    } catch (_) {
-      final res = await _client.get(
-        '/stores',
-        queryParams: qp.isNotEmpty ? qp : null,
-      );
-      responseData = res.data;
-    }
+    final feed = await getDiscoveryFeed(
+      lng: lng,
+      lat: lat,
+      category: category,
+      search: search,
+    );
 
-    if (responseData is List) {
-      return responseData
-          .map((e) => ShopModel.fromApiJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    if (responseData is Map<String, dynamic>) {
-      final list = responseData['stores'] ??
-          responseData['data'] ??
-          responseData['results'];
-      if (list is List) {
-        return list
-            .map((e) => ShopModel.fromApiJson(e as Map<String, dynamic>))
-            .toList();
-      }
-    }
-    return <ShopModel>[];
+    return feed.allStores;
   }
 
-  /// Get single store by ID or code (e.g. STR-2026-0001)
+  /// Get single store public profile
+  /// GET /stores/customer/{id}
   Future<ShopModel?> getStoreById(String idOrCode) async {
-    final res = await _client.get('/stores/$idOrCode');
+    final res = await _client.get(ApiConstants.storeDetails(idOrCode));
     if (res.data is Map<String, dynamic>) {
       return ShopModel.fromApiJson(res.data as Map<String, dynamic>);
     }
     throw FormatException('Invalid store response');
   }
 
-  /// Fetch store active menu populated with catalog items and unit pricing
+  /// Fetch store active menu populated with items and unit pricing
+  /// GET /stores/customer/{id}/menu
   Future<List<ItemModel>> getStoreMenu(
     String storeIdOrCode, {
     required String storeName,
+    String? category,
+    String? dietaryType,
+    bool? isInStock,
+    String? search,
+    String? highlightItemId,
   }) async {
-    dynamic responseData;
-    try {
-      final res = await _client.get('/stores/customer/$storeIdOrCode/menu');
-      responseData = res.data;
-    } catch (_) {
-      final res = await _client.get('/stores/$storeIdOrCode/menu');
-      responseData = res.data;
+    final qp = <String, dynamic>{};
+    if (category != null && category.isNotEmpty) qp['category'] = category;
+    if (dietaryType != null && dietaryType.isNotEmpty) {
+      qp['dietaryType'] = dietaryType;
+    }
+    if (isInStock != null) qp['isInStock'] = isInStock;
+    if (search != null && search.isNotEmpty) qp['search'] = search;
+    if (highlightItemId != null && highlightItemId.isNotEmpty) {
+      qp['highlightItemId'] = highlightItemId;
     }
 
+    final res = await _client.get(
+      ApiConstants.storeMenu(storeIdOrCode),
+      queryParams: qp.isNotEmpty ? qp : null,
+    );
+
     List<dynamic> itemsList = [];
-    if (responseData is List) {
-      itemsList = responseData;
-    } else if (responseData is Map<String, dynamic>) {
-      final possible = responseData['menu'] ??
-          responseData['items'] ??
-          responseData['data'];
+    if (res.data is List) {
+      itemsList = res.data as List;
+    } else if (res.data is Map<String, dynamic>) {
+      final map = res.data as Map<String, dynamic>;
+      final possible = map['items'] ?? map['menu'] ?? map['data'];
       if (possible is List) itemsList = possible;
     }
 
@@ -107,60 +116,45 @@ class StoreApiService {
         .toList();
   }
 
-  /// Global dish search across stores with optional coordinates
+  /// Global dish search across stores (Shop-wise grouped)
+  /// GET /stores/customer/search
+  Future<List<ShopWiseSearchResult>> searchShopWiseDishes({
+    required String query,
+    double? lng,
+    double? lat,
+    String? category,
+    String? dietaryType,
+  }) async {
+    final qp = <String, dynamic>{
+      'query': query,
+      'lng': lng ?? 77.089,
+      'lat': lat ?? 28.490,
+    };
+    if (category != null && category.isNotEmpty) qp['category'] = category;
+    if (dietaryType != null && dietaryType.isNotEmpty) {
+      qp['dietaryType'] = dietaryType;
+    }
+
+    final res = await _client.get(
+      ApiConstants.storesCustomerSearch,
+      queryParams: qp,
+    );
+    if (res.data is List) {
+      return (res.data as List)
+          .whereType<Map<String, dynamic>>()
+          .map((e) => ShopWiseSearchResult.fromApi(e))
+          .toList();
+    }
+    return const [];
+  }
+
+  /// Search dishes across stores
   Future<List<dynamic>> searchDishes({
     required String query,
     double? lat,
     double? lng,
   }) async {
-    final qp = <String, dynamic>{'q': query};
-    if (lat != null) qp['lat'] = lat;
-    if (lng != null) qp['lng'] = lng;
-
-    try {
-      final res =
-          await _client.get('/stores/customer/search', queryParams: qp);
-      if (res.data is List) return res.data as List<dynamic>;
-      if (res.data is Map<String, dynamic>) {
-        final list = res.data['results'] ?? res.data['dishes'] ?? res.data['data'];
-        if (list is List) return list;
-      }
-    } catch (_) {}
-    return <dynamic>[];
-  }
-
-  /// 1-Tap Toggle: Open / Closed (isAcceptingOrders)
-  Future<ShopModel?> toggleStoreOrders(
-    String storeId,
-    bool isAcceptingOrders,
-  ) async {
-    try {
-      final res = await _client.patch(
-        '/stores/$storeId/toggle-orders',
-        body: {'isAcceptingOrders': isAcceptingOrders},
-      );
-      if (res.data is Map<String, dynamic>) {
-        return ShopModel.fromApiJson(res.data as Map<String, dynamic>);
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  /// 1-Tap Toggle: In Stock / Out of Stock for individual menu item
-  Future<bool> toggleMenuItemStock(
-    String storeId,
-    String menuItemId,
-    bool isInStock,
-  ) async {
-    try {
-      await _client.patch(
-        '/stores/$storeId/menu/$menuItemId',
-        body: {'isInStock': isInStock},
-      );
-      return true;
-    } catch (_) {
-      return false;
-    }
+    return await searchShopWiseDishes(query: query, lat: lat, lng: lng);
   }
 }
 

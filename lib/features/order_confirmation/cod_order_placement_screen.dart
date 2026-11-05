@@ -143,7 +143,7 @@ class _CodOrderPlacementScreenState
                 ),
                 child: Column(
                   children: [
-                    _row('Shop', cart.shopName ?? 'Mishra Ji Sweets'),
+                    _row('Shop', cart.shopName?.isNotEmpty == true ? cart.shopName! : 'Selected Store'),
                     _row('Total Items', '${cart.totalItemCount} items'),
                     _row(
                       'Delivery Address',

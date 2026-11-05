@@ -154,7 +154,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         await _razorpayService.openCheckout(
           context: context,
           amountRupees: cart.grandTotal,
-          shopName: cart.shopName ?? 'Mishra Ji Sweets',
+          shopName: cart.shopName?.isNotEmpty == true ? cart.shopName! : 'Store Order',
           gatewayOrderId: _pendingGatewayOrderId,
           keyId: keyId,
           amountPaise: amountPaise,

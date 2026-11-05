@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/auth_state.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/auth_api_service.dart';
 import '../../../core/services/customer_api_service.dart';
+import '../../../core/services/push_notification_service.dart';
 import '../../../core/errors/api_exception.dart';
 
 export '../models/auth_state.dart';
@@ -57,6 +59,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       user: user,
       identifier: user?.email ?? user?.mobileNumber,
     );
+    PushNotificationService.syncTokenWithBackend();
   }
 
   Future<bool> sendOtp(String email) async {
@@ -120,6 +123,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           user: result.customer,
           errorMessage: null,
         );
+        PushNotificationService.syncTokenWithBackend();
         return true;
       }
     } on ApiException catch (e) {
@@ -178,6 +182,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
 
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
+      PushNotificationService.syncTokenWithBackend();
       return true;
     } catch (_) {
       state = state.copyWith(
@@ -208,9 +213,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
           user: result.customer,
           errorMessage: null,
         );
+        PushNotificationService.syncTokenWithBackend();
       }
       return true;
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('[Auth] signInWithGoogle exception: $e\n$stack');
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         errorMessage: 'Google sign-in failed. Please try again.',
@@ -245,6 +252,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     try {
+      await PushNotificationService.unregisterOnLogout();
       await _authService.logout();
     } finally {
       state = const AuthState(status: AuthStatus.unauthenticated);

@@ -66,32 +66,39 @@ class _RateReviewScreenState extends ConsumerState<RateReviewScreen> {
                   .firstOrNull) ??
           orderState.activeOrder;
 
-      final List<Map<String, dynamic>> dishRatings = [];
+      final List<Map<String, dynamic>> itemRatings = [];
       if (order != null && order.items.isNotEmpty) {
         for (final cartItem in order.items) {
           if (cartItem.item.menuItemId.isNotEmpty) {
-            dishRatings.add({
+            itemRatings.add({
               'menuItemId': cartItem.item.menuItemId,
-              'rating': _foodRating,
+              'name': cartItem.item.name,
+              'isRecommended': _foodRating >= 4,
+              'comment': _commentController.text.trim(),
             });
           }
         }
       }
 
-      final tagsSummary = _selectedTags.isNotEmpty
-          ? ' [Tags: ${_selectedTags.join(", ")}]'
-          : '';
       final commentText = _commentController.text.trim();
       final fullComment = commentText.isNotEmpty
-          ? '$commentText$tagsSummary'
+          ? commentText
           : (_selectedTags.isNotEmpty ? _selectedTags.join(', ') : 'Great order!');
+
+      final List<String> foodTagsList = _selectedTags.toList();
+      final List<String> driverTagsList = _selectedTags
+          .where((t) => t.contains('Partner') || t.contains('Delivery') || t.contains('Polite') || t.contains('Quick'))
+          .toList();
 
       await ref.read(orderProvider.notifier).submitOrderReview(
             orderId: widget.orderId,
             rating: _foodRating,
             comment: fullComment,
-            deliveryRating: _partnerRating > 0 ? _partnerRating : null,
-            dishRatings: dishRatings.isNotEmpty ? dishRatings : null,
+            foodTags: foodTagsList.isNotEmpty ? foodTagsList : null,
+            itemRatings: itemRatings.isNotEmpty ? itemRatings : null,
+            driverRating: _partnerRating > 0 ? _partnerRating : null,
+            driverTags: driverTagsList.isNotEmpty ? driverTagsList : null,
+            driverComment: _partnerRating >= 4 ? 'Polite and on time' : null,
           );
 
       if (!mounted) return;

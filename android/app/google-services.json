@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "723224247669",
+    "project_id": "fdp-backend-2ccd1",
+    "storage_bucket": "fdp-backend-2ccd1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723224247669:android:e5e58b46b10ff1536f273c",
+        "android_client_info": {
+          "package_name": "com.example.fdp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYBEKndyjipdqCRG_RUjRTElTteR52Joc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

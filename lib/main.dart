@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/config/env_config.dart';
+import 'core/services/push_notification_service.dart';
 import 'app/app.dart';
 
 void main() async {
@@ -16,4 +17,7 @@ void main() async {
       child: MithaiApp(),
     ),
   );
+
+  // Initialize Firebase Cloud Messaging & Local Notifications concurrently
+  PushNotificationService.initialize();
 }

@@ -64,7 +64,7 @@ class RazorpayService {
       _showSimulatedRazorpayDialog(
         context: _lastContext!,
         amountRupees: _lastAmountRupees ?? 0.0,
-        shopName: _lastShopName ?? 'Mishra Ji Sweets',
+        shopName: _lastShopName ?? 'Food Delivery',
       );
       return;
     }
@@ -116,7 +116,7 @@ class RazorpayService {
           : ApiConfig.razorpayKeyId,
       'amount': calculatedPaise,
       'currency': 'INR',
-      'name': shopName.isNotEmpty ? shopName : 'Mishra Ji Sweets',
+      'name': shopName.isNotEmpty ? shopName : 'Food Delivery',
       'description': orderDescription ?? 'Sweet & Savoury Order',
       if (gatewayOrderId != null && gatewayOrderId.isNotEmpty)
         'order_id': gatewayOrderId,

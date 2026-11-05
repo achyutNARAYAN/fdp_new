@@ -10,6 +10,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../orders/models/order_model.dart';
 import '../orders/providers/order_provider.dart';
+import '../../core/services/websocket_tracking_service.dart';
 
 class LiveDeliveryMapScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -27,18 +28,61 @@ class _LiveDeliveryMapScreenState extends ConsumerState<LiveDeliveryMapScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   Timer? _pollingTimer;
+  StreamSubscription<DriverLocationEvent>? _driverLocationSub;
+  StreamSubscription<OrderUpdateEvent>? _orderUpdateSub;
 
   @override
   void initState() {
     super.initState();
     _fetchTelemetry();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    wsTrackingService.subscribeOrder(widget.orderId);
+
+    // Live driver GPS coordinates stream via duplex WebSocket
+    _driverLocationSub = wsTrackingService.driverLocations.listen((event) {
+      if (event.orderId == widget.orderId && mounted) {
+        setState(() {
+          _telemetry = DriverTrackingModel(
+            orderId: event.orderId,
+            status: _telemetry?.status ?? 'OUT_FOR_DELIVERY',
+            driverName: _telemetry?.driverName ?? 'Delivery Partner',
+            driverPhone: _telemetry?.driverPhone ?? '',
+            driverVehicle: _telemetry?.driverVehicle ?? 'Motorcycle',
+            driverLatitude: event.latitude,
+            driverLongitude: event.longitude,
+            driverSpeed: event.speed,
+            driverHeading: event.heading,
+            destinationLat: _telemetry?.destinationLat,
+            destinationLng: _telemetry?.destinationLng,
+            distanceRemainingKm: _telemetry?.distanceRemainingKm ?? 0.0,
+            estimatedTransitMinutes: _telemetry?.estimatedTransitMinutes ?? 0,
+          );
+          _isLoading = false;
+          _errorMessage = null;
+        });
+        _mapController.move(
+          LatLng(event.latitude, event.longitude),
+          15.5,
+        );
+      }
+    });
+
+    _orderUpdateSub = wsTrackingService.orderUpdates.listen((event) {
+      if (event.orderId == widget.orderId && mounted) {
+        ref.read(orderProvider.notifier).fetchOrderById(widget.orderId);
+      }
+    });
+
+    // Fallback polling every 10s
+    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       _fetchTelemetry(isBackground: true);
     });
   }
 
   @override
   void dispose() {
+    _driverLocationSub?.cancel();
+    _orderUpdateSub?.cancel();
+    wsTrackingService.unsubscribeOrder(widget.orderId);
     _pollingTimer?.cancel();
     _mapController.dispose();
     super.dispose();

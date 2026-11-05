@@ -116,7 +116,9 @@ class CartNotifier extends StateNotifier<CartModel> {
       _updateFromApi(response);
       lastError = null;
     } on ApiException catch (error) {
-      if (error.code == 'RESTAURANT_MISMATCH' || error.statusCode == 409) {
+      if (error.code == 'DIFFERENT_STORE_CART' ||
+          error.code == 'RESTAURANT_MISMATCH' ||
+          error.statusCode == 409) {
         throw CartConflictException(
           currentShopName: state.shopName ?? 'Current Restaurant',
           newShopName: item.shopName,
@@ -228,19 +230,14 @@ class CartNotifier extends StateNotifier<CartModel> {
   }
 
   /// Apply promo coupon
-  Future<void> applyCoupon(String code, [double? fallbackDiscount]) async {
+  Future<void> applyCoupon(String code) async {
     try {
       final response = await _api.applyCoupon(code);
       _updateFromApi(response);
       lastError = null;
     } catch (error) {
       lastError = _message(error);
-      if (fallbackDiscount != null) {
-        state = state.copyWith(
-          appliedCouponCode: code,
-          discountAmount: fallbackDiscount,
-        );
-      }
+      rethrow;
     }
   }
 
@@ -315,13 +312,23 @@ class CartNotifier extends StateNotifier<CartModel> {
         final List<CartItemModel> mapped = [];
         for (final raw in rawItems) {
           if (raw is! Map<String, dynamic>) continue;
-          final String mongoId = raw['_id']?.toString() ?? '';
+          final String mongoId = raw['itemId']?.toString() ??
+              raw['_id']?.toString() ??
+              '';
           final String mId = raw['menuItemId']?.toString() ?? '';
           final String unit = raw['unit']?.toString() ?? 'PORTION';
           final int qty = (raw['quantity'] as num?)?.toInt() ?? 1;
-          final double price = ApiConfig.paiseToRupees(raw['pricePaise'] ?? 0);
+          final dynamic rawPricePaise = raw['unitPricePaise'] ??
+              raw['pricePaise'] ??
+              raw['customerPricePaise'] ??
+              raw['basePricePaise'] ??
+              raw['mrpPaise'] ??
+              raw['mrp'] ??
+              raw['price'];
+          final double price = ApiConfig.paiseToRupees(rawPricePaise ?? 0);
           final String name = raw['name']?.toString() ?? '';
-          final String instructions = raw['cookingInstructions']?.toString() ?? '';
+          final String instructions =
+              raw['cookingInstructions']?.toString() ?? '';
 
           // Check if local cart already has this item
           final local = state.items.where((ci) =>
@@ -410,9 +417,15 @@ class CartNotifier extends StateNotifier<CartModel> {
           ? ApiConfig.paiseToRupees(pricing['platformFeePaise'])
           : state.platformFee,
       taxes: pricing != null
-          ? ApiConfig.paiseToRupees(pricing['totalGstPaise'])
+          ? ApiConfig.paiseToRupees(
+              pricing['taxesPaise'] ??
+                  pricing['totalGstPaise'] ??
+                  ((pricing['foodGstPaise'] ?? 0) +
+                      (pricing['serviceGstPaise'] ?? 0)),
+            )
           : state.taxes,
-      deliveryInstructions: deliveryAddress?['deliveryInstructions']?.toString() ??
+      deliveryInstructions: data['deliveryInstructions']?.toString() ??
+          deliveryAddress?['deliveryInstructions']?.toString() ??
           state.deliveryInstructions,
     );
   }

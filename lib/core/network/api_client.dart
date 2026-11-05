@@ -10,11 +10,13 @@ class ApiResponse<T> {
   final bool success;
   final T data;
   final Map<String, dynamic>? meta;
+  final Map<String, dynamic>? raw;
 
   const ApiResponse({
     required this.success,
     required this.data,
     this.meta,
+    this.raw,
   });
 }
 
@@ -87,11 +89,14 @@ class ApiClient {
         case 'POST':
           response = await _client.post(uri, headers: finalHeaders, body: encodedBody).timeout(ApiConfig.timeout);
           break;
+        case 'PUT':
+          response = await _client.put(uri, headers: finalHeaders, body: encodedBody).timeout(ApiConfig.timeout);
+          break;
         case 'PATCH':
           response = await _client.patch(uri, headers: finalHeaders, body: encodedBody).timeout(ApiConfig.timeout);
           break;
         case 'DELETE':
-          response = await _client.delete(uri, headers: finalHeaders).timeout(ApiConfig.timeout);
+          response = await _client.delete(uri, headers: finalHeaders, body: encodedBody).timeout(ApiConfig.timeout);
           break;
         default:
           throw ApiException(message: 'Unsupported HTTP method: $method');
@@ -167,12 +172,23 @@ class ApiClient {
     return _sendRequest('PATCH', uri, headers: headers, body: body);
   }
 
-  Future<ApiResponse<dynamic>> delete(
+  Future<ApiResponse<dynamic>> put(
     String path, {
+    dynamic body,
     Map<String, String>? headers,
   }) async {
     final uri = _buildUri(path);
-    return _sendRequest('DELETE', uri, headers: headers);
+    return _sendRequest('PUT', uri, headers: headers, body: body);
+  }
+
+  Future<ApiResponse<dynamic>> delete(
+    String path, {
+    dynamic body,
+    Map<String, dynamic>? queryParams,
+    Map<String, String>? headers,
+  }) async {
+    final uri = _buildUri(path, queryParams);
+    return _sendRequest('DELETE', uri, headers: headers, body: body);
   }
 
   ApiResponse<dynamic> _processResponse(http.Response response) {
@@ -188,14 +204,17 @@ class ApiClient {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (decoded is Map<String, dynamic>) {
-        final bool isSuccess = decoded['success'] == true;
-        if (isSuccess || decoded.containsKey('data')) {
-          return ApiResponse(
-            success: true,
-            data: decoded['data'],
-            meta: decoded['meta'] is Map<String, dynamic> ? decoded['meta'] : null,
-          );
-        }
+        final bool hasData =
+            decoded.containsKey('data') && decoded['data'] != null;
+        final payload = hasData ? decoded['data'] : decoded;
+        return ApiResponse(
+          success: decoded['success'] != false,
+          data: payload,
+          meta: decoded['meta'] is Map<String, dynamic>
+              ? decoded['meta'] as Map<String, dynamic>
+              : null,
+          raw: decoded,
+        );
       }
       return ApiResponse(success: true, data: decoded);
     } else {

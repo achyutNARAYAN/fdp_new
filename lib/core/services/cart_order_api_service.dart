@@ -1,5 +1,5 @@
 import '../network/api_client.dart';
-import '../errors/api_exception.dart';
+import '../constants/api_constants.dart';
 
 class CartOrderApiService {
   final ApiClient _client;
@@ -7,19 +7,18 @@ class CartOrderApiService {
   CartOrderApiService({ApiClient? client})
       : _client = client ?? globalApiClient;
 
-  /// 1. Fetch Current Active Cart
+  /// 1. Fetch Current Active Cart & Pricing Waterfall
   /// GET /cart
   Future<Map<String, dynamic>> getCart() async {
-    final res = await _client.get('/cart');
+    final res = await _client.get(ApiConstants.cart);
     final map = _map(res.data);
-    // If backend returns {"cart": {...}}, unwrap it cleanly
     if (map.containsKey('cart') && map['cart'] is Map<String, dynamic>) {
       return map['cart'] as Map<String, dynamic>;
     }
     return map;
   }
 
-  /// 2. Add Item to Cart (Flow A)
+  /// 2. Add Item to Cart (Enforces single-restaurant rule)
   /// POST /cart/items
   Future<Map<String, dynamic>> addItem({
     required String storeId,
@@ -30,7 +29,7 @@ class CartOrderApiService {
     bool replaceCart = false,
   }) async {
     final res = await _client.post(
-      '/cart/items',
+      ApiConstants.cartItems,
       body: {
         'storeId': storeId,
         'menuItemId': menuItemId,
@@ -49,9 +48,9 @@ class CartOrderApiService {
   }
 
   /// 3. Update Item Quantity or Instructions
-  /// PATCH /cart/items/:itemId
+  /// PATCH /cart/items/:itemId (Setting quantity to 0 removes the item)
   Future<Map<String, dynamic>> updateItem(
-    String id, {
+    String itemId, {
     int? quantity,
     String? cookingInstructions,
   }) async {
@@ -61,7 +60,7 @@ class CartOrderApiService {
       body['cookingInstructions'] = cookingInstructions;
     }
 
-    final res = await _client.patch('/cart/items/$id', body: body);
+    final res = await _client.patch(ApiConstants.cartItem(itemId), body: body);
     final map = _map(res.data);
     if (map.containsKey('cart') && map['cart'] is Map<String, dynamic>) {
       return map['cart'] as Map<String, dynamic>;
@@ -71,20 +70,20 @@ class CartOrderApiService {
 
   /// 4. Remove Item from Cart
   /// DELETE /cart/items/:itemId
-  Future<void> removeItem(String id) async {
-    await _client.delete('/cart/items/$id');
+  Future<void> removeItem(String itemId) async {
+    await _client.delete(ApiConstants.cartItem(itemId));
   }
 
   /// 5. Clear Cart
   /// DELETE /cart
   Future<void> clearCart() async {
-    await _client.delete('/cart');
+    await _client.delete(ApiConstants.cart);
   }
 
-  /// 6. Apply Promo Coupon
+  /// 6. Apply Promo Coupon (e.g. WELCOME50, FLAT100, SWEET20, FREESHIP)
   /// POST /cart/coupon
   Future<Map<String, dynamic>> applyCoupon(String code) async {
-    final res = await _client.post('/cart/coupon', body: {'code': code});
+    final res = await _client.post(ApiConstants.cartCoupon, body: {'code': code});
     final map = _map(res.data);
     if (map.containsKey('cart') && map['cart'] is Map<String, dynamic>) {
       return map['cart'] as Map<String, dynamic>;
@@ -95,7 +94,7 @@ class CartOrderApiService {
   /// 7. Remove Promo Coupon
   /// DELETE /cart/coupon
   Future<Map<String, dynamic>> removeCoupon() async {
-    final res = await _client.delete('/cart/coupon');
+    final res = await _client.delete(ApiConstants.cartCoupon);
     final map = _map(res.data);
     if (map.containsKey('cart') && map['cart'] is Map<String, dynamic>) {
       return map['cart'] as Map<String, dynamic>;
@@ -103,10 +102,10 @@ class CartOrderApiService {
     return map;
   }
 
-  /// 8. Set Driver Tip (paise)
+  /// 8. Set Driver Tip (paise, 0 to 50000)
   /// POST /cart/tip
-  Future<Map<String, dynamic>> setTip(int paise) async {
-    final res = await _client.post('/cart/tip', body: {'tipPaise': paise});
+  Future<Map<String, dynamic>> setTip(int tipPaise) async {
+    final res = await _client.post(ApiConstants.cartTip, body: {'tipPaise': tipPaise});
     final map = _map(res.data);
     if (map.containsKey('cart') && map['cart'] is Map<String, dynamic>) {
       return map['cart'] as Map<String, dynamic>;
@@ -117,12 +116,12 @@ class CartOrderApiService {
   /// 9. Set Delivery Address & Instructions on Cart
   /// POST /cart/address
   Future<Map<String, dynamic>> setAddress(
-    String id,
+    String addressId,
     String instructions,
   ) async {
     final res = await _client.post(
-      '/cart/address',
-      body: {'addressId': id, 'deliveryInstructions': instructions},
+      ApiConstants.cartAddress,
+      body: {'addressId': addressId, 'deliveryInstructions': instructions},
     );
     final map = _map(res.data);
     if (map.containsKey('cart') && map['cart'] is Map<String, dynamic>) {
@@ -131,10 +130,10 @@ class CartOrderApiService {
     return map;
   }
 
-  /// 10. Checkout From Cart (Flow A)
-  /// POST /orders/checkout (with fallback to /orders)
+  /// 10. Checkout From Cart (Acquires 120s cart lease lock)
+  /// POST /orders/checkout
   Future<Map<String, dynamic>> checkout({
-    required String paymentMode, // 'COD' or 'ONLINE'
+    required String paymentMode, // 'ONLINE' or 'COD'
     String? addressId,
     String instructions = '',
     String? idempotencyKey,
@@ -148,21 +147,12 @@ class CartOrderApiService {
         'idempotencyKey': idempotencyKey,
     };
 
-    try {
-      final res = await _client.post('/orders/checkout', body: body);
-      return _unwrapOrder(res.data);
-    } on ApiException catch (e) {
-      if (e.statusCode == 404) {
-        // Fallback for servers supporting POST /orders
-        final res = await _client.post('/orders', body: body);
-        return _unwrapOrder(res.data);
-      }
-      rethrow;
-    }
+    final res = await _client.post(ApiConstants.ordersCheckout, body: body);
+    return _unwrapOrder(res.data);
   }
 
   /// 11. Direct Order Creation / Buy Now (Flow B)
-  /// POST /orders/create (with fallback to /orders)
+  /// POST /orders/create
   Future<Map<String, dynamic>> createDirectOrder({
     required String storeId,
     required List<Map<String, dynamic>> items,
@@ -187,29 +177,27 @@ class CartOrderApiService {
         'idempotencyKey': idempotencyKey,
     };
 
-    try {
-      final res = await _client.post('/orders/create', body: body);
-      return _unwrapOrder(res.data);
-    } on ApiException catch (e) {
-      if (e.statusCode == 404) {
-        final res = await _client.post('/orders', body: body);
-        return _unwrapOrder(res.data);
-      }
-      rethrow;
-    }
+    final res = await _client.post(ApiConstants.ordersCreate, body: body);
+    return _unwrapOrder(res.data);
   }
 
-  /// 12. Initiate Online Payment
-  /// POST /payments/initiate
-  Future<Map<String, dynamic>> initiatePayment(String orderId) async {
-    final res = await _client.post(
-      '/payments/initiate',
-      body: {'orderId': orderId},
-    );
+  /// 12. Create Gateway Order (Razorpay)
+  /// POST /payments/create-order
+  Future<Map<String, dynamic>> initiatePayment(
+    String orderId, {
+    String? idempotencyKey,
+  }) async {
+    final body = <String, dynamic>{
+      'orderId': orderId,
+      if (idempotencyKey != null && idempotencyKey.isNotEmpty)
+        'idempotencyKey': idempotencyKey,
+    };
+
+    final res = await _client.post(ApiConstants.paymentsCreateOrder, body: body);
     return _map(res.data);
   }
 
-  /// 13. Verify Payment Signature
+  /// 13. Verify Razorpay Payment Signature
   /// POST /payments/verify
   Future<Map<String, dynamic>> verifyPayment({
     required String orderId,
@@ -217,26 +205,35 @@ class CartOrderApiService {
     required String gatewayPaymentId,
     required String gatewaySignature,
   }) async {
+    final body = <String, dynamic>{
+      'orderId': orderId,
+      'razorpay_order_id': gatewayOrderId,
+      'razorpay_payment_id': gatewayPaymentId,
+      'razorpay_signature': gatewaySignature,
+    };
+
+    final res = await _client.post(ApiConstants.paymentsVerify, body: body);
+    return _map(res.data);
+  }
+
+  /// 14. Generate Dynamic Doorstep UPI QR
+  /// POST /payments/doorstep-qr
+  Future<Map<String, dynamic>> generateDoorstepQr(String orderId) async {
     final res = await _client.post(
-      '/payments/verify',
-      body: {
-        'orderId': orderId,
-        'gatewayOrderId': gatewayOrderId,
-        'gatewayPaymentId': gatewayPaymentId,
-        'gatewaySignature': gatewaySignature,
-      },
+      ApiConstants.paymentsDoorstepQr,
+      body: {'orderId': orderId},
     );
     return _map(res.data);
   }
 
-  /// 14. Get Order Details & Live Milestones
+  /// 15. Get Order Details & Live Milestones
   /// GET /orders/:orderId
   Future<Map<String, dynamic>> getOrder(String id) async {
-    final res = await _client.get('/orders/$id');
+    final res = await _client.get(ApiConstants.orderDetails(id));
     return _unwrapOrder(res.data);
   }
 
-  /// 15. Fetch My Orders History
+  /// 16. Fetch My Orders History
   /// GET /orders/my-orders
   Future<List<dynamic>> getOrders({
     int page = 1,
@@ -246,7 +243,7 @@ class CartOrderApiService {
     final qp = <String, dynamic>{'page': page, 'limit': limit};
     if (status != null && status.isNotEmpty) qp['status'] = status;
 
-    final res = await _client.get('/orders/my-orders', queryParams: qp);
+    final res = await _client.get(ApiConstants.myOrders, queryParams: qp);
     if (res.data is List) {
       return res.data as List<dynamic>;
     }
@@ -258,42 +255,63 @@ class CartOrderApiService {
     return <dynamic>[];
   }
 
-  /// 16. Live Driver GPS Telemetry
-  /// GET /drivers/track/:orderId
+  /// 17. Live Driver Location from Order
+  /// GET /orders/:orderId
   Future<Map<String, dynamic>> getDriverTracking(String orderId) async {
-    final res = await _client.get('/drivers/track/$orderId');
-    return _map(res.data);
+    final orderRes = await getOrder(orderId);
+    final driver = orderRes['driver'] is Map<String, dynamic>
+        ? orderRes['driver'] as Map<String, dynamic>
+        : <String, dynamic>{};
+    final coords = driver['currentLocation'] is List
+        ? driver['currentLocation'] as List
+        : const [77.088, 28.489];
+    return {
+      'orderId': orderId,
+      'status': orderRes['status'] ?? 'OUT_FOR_DELIVERY',
+      'driver': driver,
+      'driverLocation': {
+        'longitude': coords.isNotEmpty ? coords[0] : 77.088,
+        'latitude': coords.length > 1 ? coords[1] : 28.489,
+      },
+    };
   }
 
-  /// 17. Cancel Order (Before Preparation)
+  /// 18. Cancel Order (Before Preparation)
   /// POST /orders/:orderId/cancel
   Future<Map<String, dynamic>> cancelOrder(String id, String reason) async {
     final res = await _client.post(
-      '/orders/$id/cancel',
+      ApiConstants.orderCancel(id),
       body: {'reason': reason},
     );
     return _unwrapOrder(res.data);
   }
 
-  /// 18. Rate & Review Order (After Delivery)
+  /// 19. Rate & Review Delivered Order
   /// POST /reviews
   Future<Map<String, dynamic>> submitReview({
     required String orderId,
     required int rating,
     required String comment,
-    int? deliveryRating,
-    List<Map<String, dynamic>>? dishRatings,
+    List<String>? foodTags,
+    List<Map<String, dynamic>>? itemRatings,
+    int? driverRating,
+    List<String>? driverTags,
+    String? driverComment,
   }) async {
     final body = <String, dynamic>{
       'orderId': orderId,
       'rating': rating,
       'comment': comment,
-      if (deliveryRating != null) 'deliveryRating': deliveryRating,
-      if (dishRatings != null && dishRatings.isNotEmpty)
-        'dishRatings': dishRatings,
+      if (foodTags != null && foodTags.isNotEmpty) 'foodTags': foodTags,
+      if (itemRatings != null && itemRatings.isNotEmpty)
+        'itemRatings': itemRatings,
+      if (driverRating != null) 'driverRating': driverRating,
+      if (driverTags != null && driverTags.isNotEmpty) 'driverTags': driverTags,
+      if (driverComment != null && driverComment.isNotEmpty)
+        'driverComment': driverComment,
     };
 
-    final res = await _client.post('/reviews', body: body);
+    final res = await _client.post(ApiConstants.reviews, body: body);
     return _map(res.data);
   }
 

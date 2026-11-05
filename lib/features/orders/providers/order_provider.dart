@@ -146,70 +146,39 @@ class OrderNotifier extends StateNotifier<OrderState> {
     final String paymentMode =
         paymentMethod == PaymentMethodType.cod ? 'COD' : 'ONLINE';
 
-    Map<String, dynamic>? apiResponse;
     try {
-      apiResponse = await _api.checkout(
+      final apiResponse = await _api.checkout(
         paymentMode: paymentMode,
         addressId: addressId,
         instructions: deliveryInstructions,
         idempotencyKey: idempotencyKey,
       );
+
+      final createdOrder = OrderModel.fromApi(
+        apiResponse,
+        fallbackItems: cart.items,
+      );
+
+      _countdownTimer?.cancel();
+      final updatedPast = List<OrderModel>.from(state.pastOrders);
+      updatedPast.removeWhere((o) => o.orderId == createdOrder.orderId);
+      updatedPast.insert(0, createdOrder);
+
+      state = state.copyWith(
+        activeOrder: createdOrder,
+        pastOrders: updatedPast,
+        confirmationCountdownSeconds: 180,
+        isCountdownRunning: true,
+        activeOrderConfirmationPhase: 'Active Waiting',
+        isLoading: false,
+      );
+
+      startCountdown();
+      return createdOrder;
     } catch (e) {
-      debugPrint('API checkout error: $e. Creating local fallback order.');
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      rethrow;
     }
-
-    final createdOrder = apiResponse != null && apiResponse.isNotEmpty
-        ? OrderModel.fromApi(apiResponse, fallbackItems: cart.items)
-        : OrderModel(
-            orderId: 'ORD_${DateTime.now().millisecondsSinceEpoch}',
-            orderNumber:
-                'ORD-${DateTime.now().year}-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-            shopId: cart.shopId ?? 'shop_1',
-            shopName: cart.shopName ?? 'Mishra Ji Sweets',
-            shopAddress: 'Civil Lines, Lucknow',
-            fssaiLicense: 'FSSAI: 12723999000142',
-            gstin: '09AAAFM1234F1Z5',
-            items: List.from(cart.items),
-            orderStatus: paymentMethod == PaymentMethodType.cod
-                ? OrderStatus.orderConfirmed
-                : OrderStatus.confirmingOrder,
-            paymentStatus: paymentMethod == PaymentMethodType.cod
-                ? PaymentStatus.codPending
-                : PaymentStatus.pending,
-            paymentMethod: paymentMethod,
-            subtotal: cart.subtotal,
-            discountAmount: cart.discountAmount,
-            deliveryFee: cart.deliveryFee ?? 0.0,
-            packagingFee: cart.packagingFee ?? 0.0,
-            platformFee: cart.platformFee ?? 0.0,
-            taxes: cart.taxes ?? 0.0,
-            tipAmount: 0.0,
-            totalAmount: cart.grandTotal,
-            deliveryAddress: deliveryAddress,
-            deliveryInstructions: deliveryInstructions.isNotEmpty
-                ? deliveryInstructions
-                : null,
-            createdAt: DateTime.now(),
-            estimatedDeliveryTime:
-                DateTime.now().add(const Duration(minutes: 35)),
-          );
-
-    _countdownTimer?.cancel();
-    final updatedPast = List<OrderModel>.from(state.pastOrders);
-    updatedPast.removeWhere((o) => o.orderId == createdOrder.orderId);
-    updatedPast.insert(0, createdOrder);
-
-    state = state.copyWith(
-      activeOrder: createdOrder,
-      pastOrders: updatedPast,
-      confirmationCountdownSeconds: 180,
-      isCountdownRunning: true,
-      activeOrderConfirmationPhase: 'Active Waiting',
-      isLoading: false,
-    );
-
-    startCountdown();
-    return createdOrder;
   }
 
   /// Direct Order Creation / Buy Now (Flow B)
@@ -229,35 +198,40 @@ class OrderNotifier extends StateNotifier<OrderState> {
     final String paymentMode =
         paymentMethod == PaymentMethodType.cod ? 'COD' : 'ONLINE';
 
-    final res = await _api.createDirectOrder(
-      storeId: storeId,
-      items: items,
-      paymentMode: paymentMode,
-      deliveryAddressId: addressId,
-      deliveryInstructions: deliveryInstructions,
-      couponCode: couponCode,
-      tipPaise: tipPaise,
-      idempotencyKey: idempotencyKey,
-    );
+    try {
+      final res = await _api.createDirectOrder(
+        storeId: storeId,
+        items: items,
+        paymentMode: paymentMode,
+        deliveryAddressId: addressId,
+        deliveryInstructions: deliveryInstructions,
+        couponCode: couponCode,
+        tipPaise: tipPaise,
+        idempotencyKey: idempotencyKey,
+      );
 
-    final createdOrder = OrderModel.fromApi(res);
+      final createdOrder = OrderModel.fromApi(res);
 
-    _countdownTimer?.cancel();
-    final updatedPast = List<OrderModel>.from(state.pastOrders);
-    updatedPast.removeWhere((o) => o.orderId == createdOrder.orderId);
-    updatedPast.insert(0, createdOrder);
+      _countdownTimer?.cancel();
+      final updatedPast = List<OrderModel>.from(state.pastOrders);
+      updatedPast.removeWhere((o) => o.orderId == createdOrder.orderId);
+      updatedPast.insert(0, createdOrder);
 
-    state = state.copyWith(
-      activeOrder: createdOrder,
-      pastOrders: updatedPast,
-      confirmationCountdownSeconds: 180,
-      isCountdownRunning: true,
-      activeOrderConfirmationPhase: 'Active Waiting',
-      isLoading: false,
-    );
+      state = state.copyWith(
+        activeOrder: createdOrder,
+        pastOrders: updatedPast,
+        confirmationCountdownSeconds: 180,
+        isCountdownRunning: true,
+        activeOrderConfirmationPhase: 'Active Waiting',
+        isLoading: false,
+      );
 
-    startCountdown();
-    return createdOrder;
+      startCountdown();
+      return createdOrder;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      rethrow;
+    }
   }
 
   /// Step 1: Initiate payment order on gateway
@@ -342,6 +316,11 @@ class OrderNotifier extends StateNotifier<OrderState> {
     required String orderId,
     required int rating,
     required String comment,
+    List<String>? foodTags,
+    List<Map<String, dynamic>>? itemRatings,
+    int? driverRating,
+    List<String>? driverTags,
+    String? driverComment,
     int? deliveryRating,
     List<Map<String, dynamic>>? dishRatings,
   }) async {
@@ -349,8 +328,11 @@ class OrderNotifier extends StateNotifier<OrderState> {
       orderId: orderId,
       rating: rating,
       comment: comment,
-      deliveryRating: deliveryRating,
-      dishRatings: dishRatings,
+      foodTags: foodTags,
+      itemRatings: itemRatings ?? dishRatings,
+      driverRating: driverRating ?? deliveryRating,
+      driverTags: driverTags,
+      driverComment: driverComment,
     );
   }
 

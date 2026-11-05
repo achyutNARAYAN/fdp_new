@@ -11,6 +11,7 @@ import 'package:fdp/features/item/providers/catalog_provider.dart';
 import 'package:fdp/features/item/providers/store_provider.dart';
 import 'package:fdp/core/widgets/cards/item_card.dart';
 import 'package:fdp/core/widgets/cards/shop_card.dart';
+import 'package:fdp/core/providers/location_provider.dart';
 
 class SearchResultsScreen extends ConsumerStatefulWidget {
   final String query;
@@ -35,8 +36,14 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen>
     _tabController = TabController(length: 2, vsync: this);
     if (widget.query.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        final loc = ref.read(locationProvider);
+        final coords = loc.selectedAddress?.coordinates ?? loc.currentCoordinates;
         ref.read(catalogProvider.notifier).loadCatalog(search: widget.query);
-        ref.read(storesProvider.notifier).loadStores(search: widget.query);
+        ref.read(storesProvider.notifier).loadStores(
+              search: widget.query,
+              nearLng: coords?.longitude,
+              nearLat: coords?.latitude,
+            );
       });
     }
   }

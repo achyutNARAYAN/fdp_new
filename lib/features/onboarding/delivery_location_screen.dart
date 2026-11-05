@@ -99,53 +99,130 @@ class _DeliveryLocationScreenState
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Set Delivery Location')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.p16),
-          child: Column(
-            children: [
-              LocationMap(
-                center:
-                    location.currentCoordinates ??
-                    location.selectedAddress?.coordinates,
-                height: 380,
-                onTap: _selectLocation,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _address.isEmpty ? 'No location selected' : _address,
-                textAlign: TextAlign.center,
-                style: AppTypography.body,
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.accent,
-                  ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompactHeight = constraints.maxHeight < 340;
+            if (isCompactHeight) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(AppDimensions.p16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    LocationMap(
+                      center:
+                          location.currentCoordinates ??
+                          location.selectedAddress?.coordinates,
+                      height: 160,
+                      onTap: _selectLocation,
+                    ),
+                    const SizedBox(height: 10),
+                    _buildAddressCard(),
+                    if (_error != null) ...[
+                      const SizedBox(height: 6),
+                      _buildError(),
+                    ],
+                    const SizedBox(height: 8),
+                    _buildCurrentLocationButton(location),
+                    const SizedBox(height: 8),
+                    _buildContinueButton(location),
+                  ],
                 ),
-              ],
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: location.isLoadingLocation
-                    ? null
-                    : _useCurrentLocation,
-                child: location.isLoadingLocation
-                    ? const CircularProgressIndicator()
-                    : const Text('Use current location'),
+              );
+            }
+
+            return Padding(
+              padding: const EdgeInsets.all(AppDimensions.p16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: LocationMap(
+                      center:
+                          location.currentCoordinates ??
+                          location.selectedAddress?.coordinates,
+                      height: null,
+                      onTap: _selectLocation,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildAddressCard(),
+                  if (_error != null) ...[
+                    const SizedBox(height: 6),
+                    _buildError(),
+                  ],
+                  const SizedBox(height: 8),
+                  _buildCurrentLocationButton(location),
+                  const SizedBox(height: 8),
+                  _buildContinueButton(location),
+                ],
               ),
-              const Spacer(),
-              AppPrimaryButton(
-                label: 'Continue',
-                onPressed: location.currentCoordinates == null
-                    ? null
-                    : _continueWithAddress,
-                isLoading: _isSaving,
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
+    );
+  }
+
+  Widget _buildAddressCard() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.textSecondary.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.place_outlined, color: AppColors.primary, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _address.isEmpty ? 'Tap map or use current location' : _address,
+              style: AppTypography.bodySmall,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Text(
+      _error!,
+      style: AppTypography.bodySmall.copyWith(
+        color: AppColors.accent,
+      ),
+      textAlign: TextAlign.center,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  Widget _buildCurrentLocationButton(LocationState location) {
+    return OutlinedButton.icon(
+      onPressed: location.isLoadingLocation ? null : _useCurrentLocation,
+      icon: location.isLoadingLocation
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.my_location, size: 18),
+      label: const Text('Use current location'),
+    );
+  }
+
+  Widget _buildContinueButton(LocationState location) {
+    return AppPrimaryButton(
+      label: 'Continue',
+      onPressed: location.currentCoordinates == null
+          ? null
+          : _continueWithAddress,
+      isLoading: _isSaving,
     );
   }
 }

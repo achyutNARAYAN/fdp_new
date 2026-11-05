@@ -28,6 +28,15 @@ class LocalStorageService {
     return _prefs?.getString(key);
   }
 
+  static Future<bool> setStringList(String key, List<String> value) async {
+    await init();
+    return await _prefs!.setStringList(key, value);
+  }
+
+  static List<String>? getStringList(String key) {
+    return _prefs?.getStringList(key);
+  }
+
   static Future<bool> remove(String key) async {
     await init();
     return await _prefs!.remove(key);

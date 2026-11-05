@@ -122,8 +122,17 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> with Si
                     // Shop, Total & Date
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(order.shopName, style: AppTypography.heading2.copyWith(fontSize: 16)),
+                        Expanded(
+                          child: Text(
+                            order.shopName,
+                            style: AppTypography.heading2.copyWith(fontSize: 16),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Text(
                           Formatters.formatCurrency(order.totalAmount),
                           style: AppTypography.price.copyWith(fontSize: 17),

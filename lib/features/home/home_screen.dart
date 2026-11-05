@@ -55,9 +55,14 @@ class HomeScreen extends ConsumerWidget {
               child: RefreshIndicator(
                 color: AppColors.primary,
                 onRefresh: () async {
+                  final coords = address?.coordinates ?? locationState.currentCoordinates;
                   await Future.wait([
-                    ref.read(storesProvider.notifier).loadStores(),
+                    ref.read(storesProvider.notifier).loadStores(
+                          nearLng: coords?.longitude,
+                          nearLat: coords?.latitude,
+                        ),
                     ref.read(catalogProvider.notifier).loadCatalog(),
+                    ref.read(notificationProvider.notifier).loadInbox(),
                   ]);
                 },
                 child: CustomScrollView(

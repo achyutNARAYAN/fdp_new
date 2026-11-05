@@ -118,14 +118,15 @@ class _CancelOrderScreenState extends ConsumerState<CancelOrderScreen> {
                   const SizedBox(height: 20),
 
                   // Reason Radios
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
+                  Material(
+                    color: AppColors.surface,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(
                         AppDimensions.radiusCard,
                       ),
-                      border: Border.all(color: AppColors.neutralLight),
+                      side: const BorderSide(color: AppColors.neutralLight),
                     ),
+                    clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: _reasons.map((r) {
                         return RadioListTile<String>(

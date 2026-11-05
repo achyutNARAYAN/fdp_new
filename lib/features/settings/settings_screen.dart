@@ -175,12 +175,13 @@ class SettingsScreen extends ConsumerWidget {
             // Preferences Group
             const Text('App Preferences', style: AppTypography.sectionTitle),
             const SizedBox(height: 10),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
+            Material(
+              color: AppColors.surface,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-                border: Border.all(color: AppColors.neutralLight),
+                side: const BorderSide(color: AppColors.neutralLight),
               ),
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
                   ListTile(
@@ -271,12 +272,13 @@ class SettingsScreen extends ConsumerWidget {
             // Legal & About
             const Text('Legal & Compliance', style: AppTypography.sectionTitle),
             const SizedBox(height: 10),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
+            Material(
+              color: AppColors.surface,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-                border: Border.all(color: AppColors.neutralLight),
+                side: const BorderSide(color: AppColors.neutralLight),
               ),
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
                   ListTile(

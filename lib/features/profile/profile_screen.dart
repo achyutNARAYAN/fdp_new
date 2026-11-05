@@ -110,12 +110,13 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: 20),
 
             // Grouped 56 high List Rows with 24px icons
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
+            Material(
+              color: AppColors.surface,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-                border: Border.all(color: AppColors.neutralLight),
+                side: const BorderSide(color: AppColors.neutralLight),
               ),
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
                   _profileRow(

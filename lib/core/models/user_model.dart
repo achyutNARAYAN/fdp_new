@@ -75,7 +75,7 @@ class UserModel {
       dateOfBirth: DateTime.tryParse(json['dateOfBirth']?.toString() ?? ''),
       gender: json['gender']?.toString(),
       termsAccepted: json['termsAccepted'] == true,
-      isEmailVerified: json['isEmailVerified'] ?? false,
+      isEmailVerified: json['isEmailVerified'] == true,
       avatarUrl: json['avatarUrl']?.toString(),
     );
   }

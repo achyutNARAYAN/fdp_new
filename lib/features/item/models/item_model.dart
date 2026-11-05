@@ -178,102 +178,74 @@ class ItemModel {
     final cat = json['category']?.toString();
     final isIceCreamOrCold = cat == 'ICE_CREAM' || cat == 'KULFI';
 
-    // Parse existing pricing if provided by backend
+    // 1. Parse existing pricing array if provided by backend
     final rawPricing = json['pricing'] as List<dynamic>?;
     if (rawPricing != null && rawPricing.isNotEmpty) {
       for (final p in rawPricing) {
         if (p is Map<String, dynamic>) {
           final unit = p['unit']?.toString() ?? 'PORTION';
-          final paise = p['pricePaise'] ?? p['price'];
-          final mrpPaise = p['mrpPaise'] ?? p['mrp'];
-          final double price = paise is num ? ApiConfig.paiseToRupees(paise) : 150.0;
-          final double? mrp = mrpPaise is num ? ApiConfig.paiseToRupees(mrpPaise) : null;
-          variantsList.add(
-            ItemVariant(
-              id: p['_id']?.toString() ?? unit,
-              unit: unit,
-              label: ApiConfig.formatMeasurementUnit(unit),
-              price: price > 0 ? price : 150.0,
-              mrp: mrp,
-              isDefault: p['isDefault'] == true || variantsList.isEmpty,
-            ),
-          );
+          final paise = p['customerPricePaise'] ??
+              p['pricePaise'] ??
+              p['basePricePaise'] ??
+              p['unitPricePaise'] ??
+              p['price'] ??
+              p['mrpPaise'] ??
+              p['mrp'];
+          final mrpPaise = p['mrpPaise'] ?? p['mrp'] ?? paise;
+          final double price = ApiConfig.paiseToRupees(paise);
+          if (price > 0) {
+            final double mrp = ApiConfig.paiseToRupees(mrpPaise);
+            variantsList.add(
+              ItemVariant(
+                id: p['_id']?.toString() ?? unit,
+                unit: unit,
+                label: ApiConfig.formatMeasurementUnit(unit),
+                price: price,
+                mrp: mrp > 0 ? mrp : null,
+                isDefault: p['isDefault'] == true || variantsList.isEmpty,
+              ),
+            );
+          }
         }
       }
     }
 
-    // If no pricing array, generate realistic standard variants based on allowedUnits
+    // 2. If no pricing array, check flat price fields from backend (basePricePaise / customerPricePaise / mrpPaise)
     if (variantsList.isEmpty) {
-      final allowed = (json['allowedUnits'] as List<dynamic>?)
-              ?.map((e) => e.toString().toUpperCase())
-              .toList() ??
-          [];
+      final flatPaise = json['customerPricePaise'] ??
+          json['pricePaise'] ??
+          json['basePricePaise'] ??
+          json['unitPricePaise'] ??
+          json['price'] ??
+          json['mrpPaise'] ??
+          json['mrp'];
 
-      final unitsToUse = allowed.isNotEmpty
-          ? allowed
-          : (isIceCreamOrCold
-              ? ['TUB', 'SCOOP', 'LITRE']
-              : ['QUARTER_KG', 'HALF_KG', 'KG']);
-
-      for (int i = 0; i < unitsToUse.length; i++) {
-        final u = unitsToUse[i];
-        double price = 140.0;
-        double mrp = 160.0;
-        switch (u) {
-          case 'QUARTER_KG':
-            price = 140.0;
-            mrp = 160.0;
-            break;
-          case 'HALF_KG':
-            price = 260.0;
-            mrp = 300.0;
-            break;
-          case 'KG':
-            price = 500.0;
-            mrp = 580.0;
-            break;
-          case 'PIECE':
-            price = 40.0;
-            mrp = 50.0;
-            break;
-          case 'PLATE':
-          case 'PORTION':
-            price = 120.0;
-            mrp = 140.0;
-            break;
-          case 'BOX':
-            price = 350.0;
-            mrp = 400.0;
-            break;
-          case 'TUB':
-            price = 220.0;
-            mrp = 250.0;
-            break;
-          case 'SCOOP':
-            price = 85.0;
-            mrp = 100.0;
-            break;
-          case 'LITRE':
-            price = 380.0;
-            mrp = 440.0;
-            break;
-          default:
-            price = 150.0;
-            mrp = 180.0;
-        }
+      final double flatPrice = ApiConfig.paiseToRupees(flatPaise);
+      if (flatPrice > 0) {
+        final flatUnit = json['unit']?.toString() ??
+            json['baseUnit']?.toString() ??
+            ((json['allowedUnits'] is List &&
+                    (json['allowedUnits'] as List).isNotEmpty)
+                ? (json['allowedUnits'] as List).first.toString()
+                : 'PORTION');
+        final flatMrpPaise = json['mrpPaise'] ?? json['mrp'] ?? flatPaise;
+        final double flatMrp = ApiConfig.paiseToRupees(flatMrpPaise);
 
         variantsList.add(
           ItemVariant(
-            id: 'var_${u.toLowerCase()}',
-            unit: u,
-            label: ApiConfig.formatMeasurementUnit(u),
-            price: price,
-            mrp: mrp,
-            isDefault: i == 0,
+            id: json['_id']?.toString() ?? flatUnit,
+            unit: flatUnit,
+            label: ApiConfig.formatMeasurementUnit(flatUnit),
+            price: flatPrice,
+            mrp: flatMrp > 0 ? flatMrp : null,
+            isDefault: true,
           ),
         );
       }
     }
+
+    // 3. If still no pricing, check if allowedUnits exist with a fallback base price
+    // Zero hardcoded 500.0 or 260.0 dummy prices. We strictly reflect backend data.
 
     final String itemId = json['_id']?.toString() ??
         json['id']?.toString() ??
@@ -281,9 +253,9 @@ class ItemModel {
         'item_${DateTime.now().millisecondsSinceEpoch}';
 
     final effectiveShopId = json['storeId']?.toString() ??
-        (shopId.isNotEmpty ? shopId : 'STR_MISHRA_MAIN');
+        (shopId.isNotEmpty ? shopId : (json['shopId']?.toString() ?? ''));
     final effectiveShopName = json['storeName']?.toString() ??
-        (shopName.isNotEmpty ? shopName : 'Mishra Ji Sweets');
+        (shopName.isNotEmpty ? shopName : (json['shopName']?.toString() ?? ''));
 
     return ItemModel(
       id: itemId,
@@ -337,75 +309,154 @@ class ItemModel {
       catalogData = catalogObj;
     }
 
-    final List<dynamic>? pricingList = json['pricing'] as List<dynamic>?;
+    final List<dynamic>? pricingList =
+        (json['pricing'] is List && (json['pricing'] as List).isNotEmpty)
+            ? json['pricing'] as List<dynamic>
+            : (catalogData['pricing'] is List
+                ? catalogData['pricing'] as List<dynamic>
+                : null);
     final List<ItemVariant> variants = [];
 
     if (pricingList != null && pricingList.isNotEmpty) {
       for (int i = 0; i < pricingList.length; i++) {
         final p = pricingList[i] as Map<String, dynamic>;
-        final unit = p['unit']?.toString() ?? '';
-        final pricePaise = p['pricePaise'];
-        if (unit.isEmpty || pricePaise == null) continue;
+        final unit = p['unit']?.toString() ?? 'PORTION';
+        final pricePaise = p['customerPricePaise'] ??
+            p['pricePaise'] ??
+            p['basePricePaise'] ??
+            p['unitPricePaise'] ??
+            p['price'] ??
+            p['mrpPaise'] ??
+            p['mrp'];
         final double priceRupees = ApiConfig.paiseToRupees(pricePaise);
-        final mrpPaise = p['mrpPaise'];
+        if (priceRupees <= 0) continue;
+        final mrpPaise = p['mrpPaise'] ?? p['mrp'] ?? pricePaise;
+        final double mrpRupees = ApiConfig.paiseToRupees(mrpPaise);
 
         variants.add(
           ItemVariant(
-            id: p['_id']?.toString() ?? unit,
+            id: p['_id']?.toString() ?? '${unit}_$i',
             unit: unit,
             label: ApiConfig.formatMeasurementUnit(unit),
             price: priceRupees,
-            mrp: mrpPaise == null ? null : ApiConfig.paiseToRupees(mrpPaise),
-            isDefault: p['isDefault'] == true,
+            mrp: mrpRupees > 0 ? mrpRupees : null,
+            isDefault: p['isDefault'] == true || variants.isEmpty,
           ),
         );
       }
     }
 
-    final bool inStock = json['isInStock'] == true;
-    final cat = catalogData['category']?.toString();
+    // Support flat items from shop-wise search or direct item responses
+    if (variants.isEmpty) {
+      final singleUnit = json['unit']?.toString() ??
+          json['baseUnit']?.toString() ??
+          catalogData['unit']?.toString() ??
+          catalogData['baseUnit']?.toString() ??
+          'PORTION';
+      final singlePricePaise = json['customerPricePaise'] ??
+          json['pricePaise'] ??
+          json['basePricePaise'] ??
+          json['unitPricePaise'] ??
+          json['price'] ??
+          json['mrpPaise'] ??
+          json['mrp'] ??
+          catalogData['customerPricePaise'] ??
+          catalogData['basePricePaise'] ??
+          catalogData['unitPricePaise'] ??
+          catalogData['pricePaise'] ??
+          catalogData['price'] ??
+          catalogData['mrpPaise'] ??
+          catalogData['mrp'];
+
+      final double singlePrice = ApiConfig.paiseToRupees(singlePricePaise);
+      if (singlePrice > 0) {
+        final singleMrpPaise = json['mrpPaise'] ??
+            json['mrp'] ??
+            catalogData['mrpPaise'] ??
+            catalogData['mrp'] ??
+            singlePricePaise;
+        final double singleMrp = ApiConfig.paiseToRupees(singleMrpPaise);
+
+        variants.add(
+          ItemVariant(
+            id: json['menuItemId']?.toString() ??
+                json['_id']?.toString() ??
+                singleUnit,
+            unit: singleUnit,
+            label: ApiConfig.formatMeasurementUnit(singleUnit),
+            price: singlePrice,
+            mrp: singleMrp > 0 ? singleMrp : null,
+            isDefault: true,
+          ),
+        );
+      }
+    }
+
+    final bool inStock = json['isInStock'] != false;
+    final String cat = json['category']?.toString() ??
+        catalogData['category']?.toString() ??
+        '';
     final isIceCreamOrCold = cat == 'ICE_CREAM' || cat == 'KULFI';
+    final String name = (json['name'] != null &&
+            json['name'].toString().isNotEmpty)
+        ? json['name'].toString()
+        : (catalogData['name']?.toString() ?? 'Traditional Sweet');
+    final String desc = json['description']?.toString() ??
+        catalogData['description']?.toString() ??
+        '';
+    final String img = json['imageUrl']?.toString() ??
+        catalogData['imageUrl']?.toString() ??
+        '';
+    final String diet = json['dietaryType']?.toString() ??
+        catalogData['dietaryType']?.toString() ??
+        '';
+    final String effectiveItemId = json['_id']?.toString() ??
+        json['menuItemId']?.toString() ??
+        catalogData['_id']?.toString() ??
+        '';
 
     return ItemModel(
-      id: catalogData['_id']?.toString() ?? json['_id']?.toString() ?? '',
-      menuItemId: json['_id']?.toString() ?? '',
+      id: effectiveItemId,
+      menuItemId: json['menuItemId']?.toString() ??
+          json['_id']?.toString() ??
+          effectiveItemId,
       shopId: json['storeId']?.toString() ?? storeId,
       shopName: storeName,
-      name: catalogData['name']?.toString() ?? '',
-      hindiName: catalogData['hindiName']?.toString(),
-      description: catalogData['description']?.toString() ?? '',
-      imageUrl: catalogData['imageUrl']?.toString() ?? '',
+      name: name,
+      hindiName: json['hindiName']?.toString() ?? catalogData['hindiName']?.toString(),
+      description: desc,
+      imageUrl: img,
       category: _formatCategory(cat),
-      dietType: _parseDietType(catalogData['dietaryType']?.toString()),
+      dietType: _parseDietType(diet),
       variants: variants,
       availability: inStock
           ? ItemAvailability.available
           : ItemAvailability.unavailable,
       isPerishable: isIceCreamOrCold,
-      shelfLife: catalogData['shelfLife']?.toString(),
-      ingredients:
-          (catalogData['standardIngredients'] as List<dynamic>?)
+      shelfLife: json['shelfLife']?.toString() ?? catalogData['shelfLife']?.toString(),
+      ingredients: (json['standardIngredients'] is List)
+          ? (json['standardIngredients'] as List).map((e) => e.toString()).toList()
+          : ((catalogData['standardIngredients'] as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              []),
+      allergens: (json['allergenTags'] is List)
+          ? (json['allergenTags'] as List).map((e) => e.toString()).toList()
+          : ((catalogData['allergenTags'] as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              []),
+      allowedUnits: (catalogData['allowedUnits'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      allergens:
-          (catalogData['allergenTags'] as List<dynamic>?)
+      synonyms: (catalogData['synonyms'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      allowedUnits:
-          (catalogData['allowedUnits'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
-      synonyms:
-          (catalogData['synonyms'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
-      approxPrepTimeMinutes: (catalogData['approxPrepTimeMinutes'] as num?)
-          ?.toInt(),
-      spiceLevel: catalogData['spiceLevel']?.toString(),
+      approxPrepTimeMinutes: (json['approxPrepTimeMinutes'] as num?)?.toInt() ??
+          (catalogData['approxPrepTimeMinutes'] as num?)?.toInt(),
+      spiceLevel: json['spiceLevel']?.toString() ?? catalogData['spiceLevel']?.toString(),
     );
   }
 }

@@ -29,14 +29,21 @@ class ItemCard extends ConsumerWidget {
     final defaultVariant = item.defaultVariant ??
         (item.variants.isNotEmpty
             ? item.variants.first
-            : const ItemVariant(
-                id: 'var_default',
-                unit: 'PORTION',
-                label: 'Standard',
-                price: 150.0,
-                mrp: 180.0,
-                isDefault: true,
-              ));
+            : (item.price > 0
+                ? ItemVariant(
+                    id: item.id.isNotEmpty ? item.id : 'var_default',
+                    unit: 'PORTION',
+                    label: 'Standard',
+                    price: item.price,
+                    isDefault: true,
+                  )
+                : const ItemVariant(
+                    id: 'var_default',
+                    unit: 'PORTION',
+                    label: 'From shops',
+                    price: 0.0,
+                    isDefault: true,
+                  )));
     if (item.availability == ItemAvailability.unavailable) {
       return Card(
         child: ListTile(
@@ -103,10 +110,19 @@ class ItemCard extends ConsumerWidget {
               Row(
                 children: [
                   Text(
-                    Formatters.formatCurrency(defaultVariant.price),
-                    style: AppTypography.price.copyWith(fontSize: 15),
+                    defaultVariant.price > 0
+                        ? Formatters.formatCurrency(defaultVariant.price)
+                        : 'Explore options',
+                    style: defaultVariant.price > 0
+                        ? AppTypography.price.copyWith(fontSize: 15)
+                        : AppTypography.caption.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                   ),
-                  if (defaultVariant.mrp != null &&
+                  if (defaultVariant.price > 0 &&
+                      defaultVariant.mrp != null &&
                       defaultVariant.mrp! > defaultVariant.price) ...[
                     const SizedBox(width: 6),
                     Text(
@@ -271,7 +287,9 @@ class ItemCard extends ConsumerWidget {
             ),
           ),
           onPressed: () {
-            if (item.customizationGroups.isNotEmpty ||
+            if (item.shopId.isEmpty ||
+                variant.price <= 0 ||
+                item.customizationGroups.isNotEmpty ||
                 item.allowsCakeMessage ||
                 onCustomiseTap != null) {
               if (onCustomiseTap != null) {

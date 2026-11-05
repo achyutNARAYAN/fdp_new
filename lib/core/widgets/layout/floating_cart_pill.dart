@@ -69,9 +69,10 @@ class FloatingCartPill extends ConsumerWidget {
                           fontSize: 15,
                         ),
                       ),
-                      if (cart.shopName != null)
+                      if (cart.shopName != null &&
+                          cart.shopName!.trim().isNotEmpty)
                         Text(
-                          'From ${cart.shopName}',
+                          'From ${cart.shopName!.trim()}',
                           style: const TextStyle(
                             color: AppColors.neutral,
                             fontSize: 11,

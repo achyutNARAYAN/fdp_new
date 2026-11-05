@@ -236,11 +236,13 @@ class OrderModel {
         ? json['pricing'] as Map<String, dynamic>
         : <String, dynamic>{};
 
-    final double subtotal = pricing['itemsSubtotalPaise'] != null
-        ? (pricing['itemsSubtotalPaise'] as num) / 100
-        : (pricing['subtotalPaise'] != null
-            ? (pricing['subtotalPaise'] as num) / 100
-            : (json['subtotal'] as num? ?? 0).toDouble());
+    final double subtotal = pricing['itemTotalPaise'] != null
+        ? (pricing['itemTotalPaise'] as num) / 100
+        : (pricing['itemsSubtotalPaise'] != null
+            ? (pricing['itemsSubtotalPaise'] as num) / 100
+            : (pricing['subtotalPaise'] != null
+                ? (pricing['subtotalPaise'] as num) / 100
+                : (json['subtotal'] as num? ?? 0).toDouble()));
 
     final double discount = pricing['discountPaise'] != null
         ? (pricing['discountPaise'] as num) / 100
@@ -258,9 +260,13 @@ class OrderModel {
         ? (pricing['platformFeePaise'] as num) / 100
         : (json['platformFee'] as num? ?? 0).toDouble();
 
-    final double taxes = pricing['totalGstPaise'] != null
-        ? (pricing['totalGstPaise'] as num) / 100
-        : (json['taxes'] as num? ?? 0).toDouble();
+    final double taxes = pricing['taxesPaise'] != null
+        ? (pricing['taxesPaise'] as num) / 100
+        : (pricing['totalGstPaise'] != null
+            ? (pricing['totalGstPaise'] as num) / 100
+            : (((pricing['foodGstPaise'] as num? ?? 0) +
+                    (pricing['serviceGstPaise'] as num? ?? 0)) /
+                100));
 
     final double tip = pricing['tipPaise'] != null
         ? (pricing['tipPaise'] as num) / 100
@@ -334,7 +340,9 @@ class OrderModel {
 
     final storeSnapshot = json['storeSnapshot'] is Map<String, dynamic>
         ? json['storeSnapshot'] as Map<String, dynamic>
-        : null;
+        : (json['store'] is Map<String, dynamic>
+            ? json['store'] as Map<String, dynamic>
+            : null);
     final storeAddress = storeSnapshot?['address'] is Map<String, dynamic>
         ? storeSnapshot!['address'] as Map<String, dynamic>
         : null;
@@ -342,18 +350,30 @@ class OrderModel {
         ? [storeAddress['street'], storeAddress['city'], storeAddress['pinCode']]
             .where((e) => e != null && e.toString().trim().isNotEmpty)
             .join(', ')
-        : (json['shopAddress']?.toString() ?? 'Civil Lines, Lucknow');
+        : (json['shopAddress']?.toString() ?? json['storeAddress']?.toString() ?? '');
 
     final String shopName = storeSnapshot?['name']?.toString() ??
         storeSnapshot?['tradeName']?.toString() ??
         json['storeName']?.toString() ??
         json['shopName']?.toString() ??
-        'Mishra Ji Sweets';
+        'Store';
 
     final String storeId = json['storeId']?.toString() ??
         json['shopId']?.toString() ??
         storeSnapshot?['_id']?.toString() ??
+        storeSnapshot?['id']?.toString() ??
         '';
+
+    final driverObj = json['driver'] is Map<String, dynamic>
+        ? json['driver'] as Map<String, dynamic>
+        : null;
+    final String? driverName =
+        driverObj?['name']?.toString() ?? json['driverName']?.toString();
+    final String? driverPhone =
+        driverObj?['phone']?.toString() ?? json['driverPhone']?.toString();
+    final String? driverVehicle = driverObj?['vehicleNumber']?.toString() ??
+        driverObj?['vehicle']?.toString() ??
+        json['driverVehicle']?.toString();
 
     String addressStr = 'Saved Delivery Address';
     final rawAddr = json['deliveryAddress'];
@@ -389,9 +409,14 @@ class OrderModel {
       for (final raw in (json['items'] as List)) {
         if (raw is! Map<String, dynamic>) continue;
         final unit = raw['unit']?.toString() ?? 'PORTION';
-        final double price = raw['pricePaise'] != null
-            ? ApiConfig.paiseToRupees(raw['pricePaise'])
-            : (raw['price'] as num? ?? 0).toDouble();
+        final dynamic rawPaise = raw['customerPricePaise'] ??
+            raw['unitPricePaise'] ??
+            raw['pricePaise'] ??
+            raw['basePricePaise'] ??
+            raw['mrpPaise'] ??
+            raw['mrp'] ??
+            raw['price'];
+        final double price = ApiConfig.paiseToRupees(rawPaise ?? 0);
         final int qty = (raw['quantity'] as num?)?.toInt() ?? 1;
         final String name = raw['name']?.toString() ?? 'Delicacy';
         final String mId = raw['menuItemId']?.toString() ?? '';
@@ -460,6 +485,9 @@ class OrderModel {
       deliveryInstructions: json['deliveryInstructions']?.toString(),
       createdAt: createdAt,
       estimatedDeliveryTime: createdAt.add(const Duration(minutes: 35)),
+      driverName: driverName,
+      driverPhone: driverPhone,
+      driverVehicle: driverVehicle,
     );
   }
 }

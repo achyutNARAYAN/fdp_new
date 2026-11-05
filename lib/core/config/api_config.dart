@@ -23,6 +23,21 @@ class ApiConfig {
     );
   }
 
+  /// Live WebSocket Gateway URL
+  static String get wsUrl {
+    const fromDefine = String.fromEnvironment('WS_URL');
+    if (fromDefine.isNotEmpty) return fromDefine;
+    final envVal = EnvConfig.get('WS_URL');
+    if (envVal.isNotEmpty) return envVal;
+    final root = rootUrl;
+    if (root.startsWith('https://')) {
+      return '${root.replaceFirst('https://', 'wss://')}/ws';
+    } else if (root.startsWith('http://')) {
+      return '${root.replaceFirst('http://', 'ws://')}/ws';
+    }
+    return 'wss://fdp-tkl0.onrender.com/ws';
+  }
+
   /// Network Timeout
   static Duration get timeout {
     final timeoutSec = EnvConfig.get('API_TIMEOUT_SECONDS');

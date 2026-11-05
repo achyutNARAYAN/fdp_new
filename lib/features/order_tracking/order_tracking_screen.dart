@@ -13,6 +13,7 @@ import 'package:fdp/core/widgets/badges/payment_status_badge.dart';
 import 'package:fdp/core/widgets/buttons/app_primary_button.dart';
 import 'package:fdp/core/widgets/buttons/app_secondary_button.dart';
 import 'package:fdp/core/widgets/layout/no_order_data.dart';
+import '../../core/services/websocket_tracking_service.dart';
 
 class OrderTrackingScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -25,13 +26,21 @@ class OrderTrackingScreen extends ConsumerStatefulWidget {
 
 class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
   Timer? _pollingTimer;
+  StreamSubscription<OrderUpdateEvent>? _wsSubscription;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(orderProvider.notifier).fetchOrderById(widget.orderId);
-      _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      // Connect to live duplex WebSocket room
+      wsTrackingService.subscribeOrder(widget.orderId);
+      _wsSubscription = wsTrackingService.orderUpdates.listen((event) {
+        if (event.orderId == widget.orderId && mounted) {
+          ref.read(orderProvider.notifier).fetchOrderById(widget.orderId);
+        }
+      });
+      _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
         ref.read(orderProvider.notifier).fetchOrderById(widget.orderId);
       });
     });
@@ -39,6 +48,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
 
   @override
   void dispose() {
+    _wsSubscription?.cancel();
+    wsTrackingService.unsubscribeOrder(widget.orderId);
     _pollingTimer?.cancel();
     super.dispose();
   }

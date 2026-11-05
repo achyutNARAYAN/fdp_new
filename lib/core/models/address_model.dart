@@ -130,10 +130,14 @@ class AddressModel {
     final rawCoordinates =
         json['coordinates'] ??
         (location is Map<String, dynamic> ? location['coordinates'] : null);
-    if (rawCoordinates is List) {
-      final list = rawCoordinates;
-      if (list.length >= 2) {
-        coords = LatLng.fromJson({'coordinates': list});
+    if (rawCoordinates is List && rawCoordinates.length >= 2) {
+      final val0 = (rawCoordinates[0] as num?)?.toDouble() ?? 0.0;
+      final val1 = (rawCoordinates[1] as num?)?.toDouble() ?? 0.0;
+      // GeoJSON Indian coordinates [longitude, latitude]: lng is 68-98, lat is 6-38
+      if (val0 > 60 && val1 < 40) {
+        coords = LatLng(val1, val0);
+      } else {
+        coords = LatLng(val0, val1);
       }
     }
 

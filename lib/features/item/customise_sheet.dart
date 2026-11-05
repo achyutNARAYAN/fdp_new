@@ -194,21 +194,23 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
                 Column(
                   children: widget.item.variants.map((v) {
                     final isSelected = _selectedVariant.id == v.id;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Material(
                         color: isSelected
                             ? AppColors.primaryTint20
                             : AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.neutralBorder,
-                          width: isSelected ? 1.5 : 1.0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.neutralBorder,
+                            width: isSelected ? 1.5 : 1.0,
+                          ),
                         ),
-                      ),
-                      child: RadioListTile<ItemVariant>(
+                        clipBehavior: Clip.antiAlias,
+                        child: RadioListTile<ItemVariant>(
                         value: v,
                         groupValue: _selectedVariant,
                         activeColor: AppColors.primary,
@@ -222,8 +224,9 @@ class _CustomiseSheetState extends ConsumerState<CustomiseSheet> {
                             setState(() => _selectedVariant = val);
                         },
                       ),
-                    );
-                  }).toList(),
+                    ),
+                  );
+                }).toList(),
                 ),
 
                 const SizedBox(height: 20),

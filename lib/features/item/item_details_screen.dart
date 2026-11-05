@@ -627,14 +627,16 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
     final bool inCart = cartItemIndex >= 0;
     final int quantity = inCart ? cart.items[cartItemIndex].quantity : 0;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-        border: Border.all(color: AppColors.neutralLight),
-      ),
-      child: ListTile(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+          side: const BorderSide(color: AppColors.neutralLight),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
         contentPadding: const EdgeInsets.all(12),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(10),
@@ -739,8 +741,9 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
               ),
         onTap: () => context.push('/shop/${offer.shopId}'),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildExpandableTile(
     String title,

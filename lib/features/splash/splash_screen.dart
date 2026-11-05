@@ -40,7 +40,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   void _initApp() async {
-    await ref.read(authProvider.notifier).initialization;
+    try {
+      await ref
+          .read(authProvider.notifier)
+          .initialization
+          .timeout(const Duration(milliseconds: 2500), onTimeout: () {
+            debugPrint('[Splash] Auth initialization timed out, proceeding.');
+          });
+      // Allow the brand splash & breathing animation to be visible smoothly
+      await Future.delayed(const Duration(milliseconds: 1200));
+    } catch (e) {
+      debugPrint('[Splash] Init notice: $e');
+    }
+
     if (!mounted) return;
     final isAuthenticated =
         ref.read(authProvider).status == AuthStatus.authenticated;

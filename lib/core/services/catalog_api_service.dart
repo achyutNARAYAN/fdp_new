@@ -1,4 +1,5 @@
 import '../network/api_client.dart';
+import '../constants/api_constants.dart';
 import 'package:fdp/features/item/models/item_model.dart';
 
 class CatalogApiService {
@@ -7,6 +8,7 @@ class CatalogApiService {
   CatalogApiService({ApiClient? client}) : _client = client ?? globalApiClient;
 
   /// Fetch list of catalog items with search and filters
+  /// GET /catalog
   Future<List<ItemModel>> getCatalogItems({
     String? category,
     String? dietaryType,
@@ -19,13 +21,14 @@ class CatalogApiService {
     if (page != null) qp['page'] = page;
     if (limit != null) qp['limit'] = limit;
     if (category != null && category.isNotEmpty) qp['category'] = category;
-    if (dietaryType != null && dietaryType.isNotEmpty)
+    if (dietaryType != null && dietaryType.isNotEmpty) {
       qp['dietaryType'] = dietaryType;
+    }
     if (search != null && search.isNotEmpty) qp['search'] = search;
     if (isFeatured != null) qp['isFeatured'] = isFeatured;
 
     final res = await _client.get(
-      '/catalog',
+      ApiConstants.catalog,
       queryParams: qp.isNotEmpty ? qp : null,
     );
 
@@ -39,8 +42,9 @@ class CatalogApiService {
   }
 
   /// Get single catalog item by ID or Code
+  /// GET /catalog/{id}
   Future<ItemModel?> getCatalogItemById(String idOrCode) async {
-    final res = await _client.get('/catalog/$idOrCode');
+    final res = await _client.get(ApiConstants.catalogItem(idOrCode));
     if (res.data is Map<String, dynamic>) {
       return ItemModel.fromCatalogApi(res.data as Map<String, dynamic>);
     }
@@ -48,9 +52,10 @@ class CatalogApiService {
   }
 
   /// Get master taxonomy metadata (categories, units, dietary types)
+  /// GET /catalog/meta/categories
   Future<Map<String, dynamic>> getCatalogMetadata() async {
     try {
-      final res = await _client.get('/catalog/meta/categories');
+      final res = await _client.get(ApiConstants.catalogCategories);
       if (res.data is Map<String, dynamic>) {
         return res.data as Map<String, dynamic>;
       }
