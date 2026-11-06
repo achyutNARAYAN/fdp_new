@@ -239,7 +239,10 @@ class OrderNotifier extends StateNotifier<OrderState> {
     String orderId, {
     String? idempotencyKey,
   }) async {
-    return await _api.initiatePayment(orderId, idempotencyKey: idempotencyKey);
+    return await _api.initiatePayment(
+      orderId,
+      idempotencyKey: idempotencyKey ?? 'payment-create-$orderId',
+    );
   }
 
   /// Step 2: Verify payment signature and confirm order
@@ -286,29 +289,22 @@ class OrderNotifier extends StateNotifier<OrderState> {
     required String orderId,
     required String reason,
   }) async {
-    _countdownTimer?.cancel();
-    try {
-      await _api.cancelOrder(orderId, reason);
-    } catch (e) {
-      debugPrint('API cancel order error: $e');
-    }
+    final result = await _api.cancelOrder(orderId, reason);
 
     final target = state.pastOrders.where((o) => o.orderId == orderId).firstOrNull ??
         (state.activeOrder?.orderId == orderId ? state.activeOrder : null);
 
     if (target != null) {
-      final isPaid = target.paymentStatus == PaymentStatus.paid;
+      if (state.activeOrder?.orderId == orderId) _countdownTimer?.cancel();
+      final refundInitiated =
+          target.paymentStatus == PaymentStatus.paid &&
+          result['refundInitiated'] == true;
       final updated = target.copyWith(
         orderStatus: OrderStatus.cancelled,
         cancellationReason: reason,
-        paymentStatus: isPaid
+        paymentStatus: refundInitiated
             ? PaymentStatus.refundInitiated
             : target.paymentStatus,
-        refundAmount: isPaid ? target.totalAmount : null,
-        refundReference: isPaid
-            ? 'REF_CN_${DateTime.now().millisecondsSinceEpoch}'
-            : null,
-        refundEta: isPaid ? DateTime.now().add(const Duration(days: 3)) : null,
       );
       _updateActiveOrder(updated);
     }

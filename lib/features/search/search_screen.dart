@@ -6,7 +6,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/storage/local_storage_service.dart';
-import '../../core/services/catalog_api_service.dart';
 import '../../core/services/store_api_service.dart';
 import '../../core/providers/location_provider.dart';
 import '../../core/utils/formatters.dart';
@@ -15,7 +14,6 @@ import '../../core/widgets/skeleton.dart';
 import '../item/models/item_model.dart';
 import '../item/models/shop_model.dart';
 import '../item/providers/catalog_provider.dart';
-import '../item/providers/store_provider.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -115,49 +113,29 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final coords = loc.selectedAddress?.coordinates ?? loc.currentCoordinates;
 
     try {
-      final itemsFuture = catalogApiService
-          .getCatalogItems(search: query)
-          .catchError((_) => <ItemModel>[]);
-
       final storesFuture = storeApiService
-          .getStores(
-            search: query,
-            nearLng: coords?.longitude,
-            nearLat: coords?.latitude,
+          .searchShopWiseDishes(
+            query: query,
+            lng: coords?.longitude,
+            lat: coords?.latitude,
           )
-          .catchError((_) => <ShopModel>[]);
+          .catchError((_) => []);
 
-      final results = await Future.wait([itemsFuture, storesFuture]);
+      final groupedResults = await storesFuture;
       if (currentSeq != _searchSeq || !mounted) return;
 
-      final apiItems = results[0] as List<ItemModel>;
-      final apiStores = results[1] as List<ShopModel>;
-
-      // Match against local cache
-      final q = query.toLowerCase();
-      final localCatalog = ref.read(catalogProvider).items;
-      final localStores = ref.read(storesProvider).stores;
-
-      final localItemMatches = localCatalog.where((item) {
-        return item.name.toLowerCase().contains(q) ||
-            item.category.toLowerCase().contains(q) ||
-            item.shopName.toLowerCase().contains(q) ||
-            item.ingredients.any((i) => i.toLowerCase().contains(q));
-      }).toList();
-
-      final localStoreMatches = localStores.where((shop) {
-        return shop.name.toLowerCase().contains(q) ||
-            shop.tags.any((t) => t.toLowerCase().contains(q)) ||
-            shop.address.toLowerCase().contains(q);
-      }).toList();
+      final apiStores = groupedResults.map((result) => result.store).toList();
+      final matchingItems = groupedResults
+          .expand((result) => result.matchingItems)
+          .toList();
 
       final itemsMap = <String, ItemModel>{};
-      for (final it in [...apiItems, ...localItemMatches]) {
+      for (final it in matchingItems) {
         if (it.id.isNotEmpty) itemsMap[it.id] = it;
       }
 
       final storesMap = <String, ShopModel>{};
-      for (final s in [...apiStores, ...localStoreMatches]) {
+      for (final s in apiStores) {
         if (s.id.isNotEmpty) storesMap[s.id] = s;
       }
 

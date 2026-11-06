@@ -3,6 +3,7 @@ import '../models/shop_model.dart';
 import '../models/item_model.dart';
 import '../models/discovery_feed_model.dart';
 import '../../../core/services/store_api_service.dart';
+import '../../../core/providers/location_provider.dart';
 
 class StoresState {
   final bool isLoading;
@@ -101,19 +102,35 @@ final storesProvider = StateNotifierProvider<StoresNotifier, StoresState>((
   return StoresNotifier();
 });
 
+final shopWiseSearchProvider = FutureProvider.family<List<ShopWiseSearchResult>, String>((ref, query) async {
+  final location = ref.watch(locationProvider);
+  final coordinates = location.selectedAddress?.coordinates ?? location.currentCoordinates;
+  return storeApiService.searchShopWiseDishes(
+    query: query,
+    lng: coordinates?.longitude,
+    lat: coordinates?.latitude,
+  );
+});
+
+final storeDetailsProvider = FutureProvider.family<ShopModel, String>((ref, storeId) async {
+  final cached = ref
+      .watch(storesProvider)
+      .stores
+      .where((store) => store.id == storeId)
+      .firstOrNull;
+  if (cached != null) return cached;
+  final store = await storeApiService.getStoreById(storeId);
+  if (store == null) throw FormatException('Store not found');
+  return store;
+});
+
 /// Fetches store menu items dynamically for a specific shop
 final storeMenuProvider = FutureProvider.family<List<ItemModel>, String>((
   ref,
   storeId,
 ) async {
-  final storeName =
-      ref
-          .watch(storesProvider)
-          .stores
-          .where((store) => store.id == storeId)
-          .firstOrNull
-          ?.name ??
-      '';
+  final store = await ref.watch(storeDetailsProvider(storeId).future);
+  final storeName = store.name;
   return await storeApiService.getStoreMenu(storeId, storeName: storeName);
 });
 

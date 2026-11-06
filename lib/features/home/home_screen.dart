@@ -8,6 +8,7 @@ import 'package:fdp/core/providers/location_provider.dart';
 import 'package:fdp/features/notifications/providers/notification_provider.dart';
 import 'package:fdp/features/item/providers/store_provider.dart';
 import 'package:fdp/features/item/providers/catalog_provider.dart';
+import 'package:fdp/features/checkout/providers/address_provider.dart';
 import 'package:fdp/core/widgets/cards/shop_card.dart';
 import 'package:fdp/core/widgets/cards/item_card.dart';
 
@@ -16,6 +17,17 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(addressListProvider, (_, addresses) {
+      if (addresses.isEmpty || ref.read(locationProvider).selectedAddress != null) {
+        return;
+      }
+      final address = addresses.firstWhere(
+        (address) => address.isDefault,
+        orElse: () => addresses.first,
+      );
+      ref.read(locationProvider.notifier).selectAddress(address);
+    });
+
     ref.listen<LocationState>(locationProvider, (previous, next) {
       final prevCoords =
           previous?.selectedAddress?.coordinates ?? previous?.currentCoordinates;
@@ -28,7 +40,6 @@ class HomeScreen extends ConsumerWidget {
             );
       }
     });
-
     final locationState = ref.watch(locationProvider);
     final address = locationState.selectedAddress;
     final addressLocation = address == null
@@ -45,14 +56,10 @@ class HomeScreen extends ConsumerWidget {
     final unreadNotifs = ref.watch(notificationProvider.notifier).unreadCount;
     final storesState = ref.watch(storesProvider);
     final catalogState = ref.watch(catalogProvider);
+    final categories = ref.watch(catalogCategoriesProvider).value ?? const <String>[];
 
     final displayShops = storesState.stores;
     final displayItems = catalogState.items;
-    final categories = catalogState.items
-        .map((item) => item.category)
-        .where((name) => name.isNotEmpty)
-        .toSet()
-        .toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,

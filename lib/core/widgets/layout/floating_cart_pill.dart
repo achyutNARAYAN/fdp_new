@@ -30,7 +30,7 @@ class FloatingCartPill extends ConsumerWidget {
       height: AppDimensions.heightFloatingCart,
       margin: const EdgeInsets.symmetric(horizontal: AppDimensions.p16),
       decoration: BoxDecoration(
-        color: AppColors.textPrimary, // Inverted dark pill #171A14
+        color: AppColors.primary, // Sage Green
         borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
         boxShadow: AppDimensions.elevationLevel3,
       ),
@@ -65,17 +65,19 @@ class FloatingCartPill extends ConsumerWidget {
                       Text(
                         '$itemText • $amountText',
                         style: AppTypography.itemName.copyWith(
-                          color: Colors.white,
+                          color: AppColors.onPrimary,
                           fontSize: 15,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                       if (cart.shopName != null &&
                           cart.shopName!.trim().isNotEmpty)
                         Text(
                           'From ${cart.shopName!.trim()}',
-                          style: const TextStyle(
-                            color: AppColors.neutral,
+                          style: TextStyle(
+                            color: AppColors.onPrimary.withOpacity(0.75),
                             fontSize: 11,
+                            fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -84,22 +86,22 @@ class FloatingCartPill extends ConsumerWidget {
                   ),
                 ),
 
-                // View Cart + Sage Green Chevron
+                // View Cart + Chevron
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
                       'View Cart',
                       style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                        color: AppColors.onPrimary,
+                        fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
                     ),
                     const SizedBox(width: 4),
                     const Icon(
                       Icons.chevron_right,
-                      color: AppColors.primary,
+                      color: AppColors.onPrimary,
                       size: 20,
                     ),
                   ],

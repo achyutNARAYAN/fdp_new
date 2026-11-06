@@ -1,8 +1,10 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../core/services/razorpay_service.dart';
+import '../../core/config/api_config.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
@@ -32,6 +34,20 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   bool _isProcessing = false;
   String? _pendingOrderId;
   String? _pendingGatewayOrderId;
+  String? _checkoutIdempotencyKey;
+
+  String _getCheckoutIdempotencyKey() {
+    if (_checkoutIdempotencyKey != null) return _checkoutIdempotencyKey!;
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex = bytes
+        .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+        .join();
+    return _checkoutIdempotencyKey =
+        '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
+  }
 
   @override
   void initState() {
@@ -76,6 +92,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final confirmedId = _pendingOrderId!;
       _pendingOrderId = null;
       _pendingGatewayOrderId = null;
+      _checkoutIdempotencyKey = null;
 
       // Navigate to live waiting confirmation screen
       context.go('/waiting-confirmation/$confirmedId');
@@ -107,6 +124,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   Future<void> _handleProceedToPay() async {
+    if (_isProcessing) return;
+
     final cart = ref.read(cartProvider);
     if (cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -165,9 +184,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               cart: cart,
               paymentMethod: _selectedPaymentMethod,
               deliveryAddress: address,
-              addressId: selectedAddr.id,
-              deliveryInstructions: effectiveInstructions,
-              idempotencyKey: checkoutIdempotencyKey,
+              addressId: selectedAddr?.id,
+              deliveryInstructions: _noteController.text.trim(),
+              idempotencyKey: _getCheckoutIdempotencyKey(),
             );
 
         _pendingOrderId = createdOrder.orderId;
@@ -181,28 +200,26 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               idempotencyKey: paymentIdempotencyKey,
             );
 
-        _pendingGatewayOrderId = initData['gatewayOrderId']?.toString() ??
-            initData['razorpayOrderId']?.toString() ??
-            initData['orderId']?.toString() ??
-            initData['id']?.toString();
-        final String? rawKeyId = initData['keyId']?.toString();
-        final String? keyId = (rawKeyId != null && !rawKeyId.toLowerCase().contains('mock'))
-            ? rawKeyId
-            : (initData['razorpayKeyId']?.toString() ??
-                initData['key']?.toString());
-        final int? amountPaise = (initData['amountPaise'] as num?)?.toInt() ??
-            (initData['amount'] as num?)?.toInt();
+        final gatewayOrderId = (initData['gatewayOrderId'] ??
+                initData['razorpayOrderId'] ??
+                initData['id'])
+            ?.toString();
+        if (gatewayOrderId == null || gatewayOrderId.isEmpty) {
+          throw StateError('Payment gateway did not return an order ID.');
+        }
+        _pendingGatewayOrderId = gatewayOrderId;
+        final String? keyId = initData['keyId']?.toString();
+        final int? amountPaise = (initData['amountPaise'] as num?)?.toInt();
 
         if (!mounted) return;
 
         // Step 3: Open Razorpay checkout dialog
         await _razorpayService.openCheckout(
-          context: context,
-          amountRupees: cart.grandTotal,
           shopName: cart.shopName?.isNotEmpty == true ? cart.shopName! : 'Store Order',
-          gatewayOrderId: _pendingGatewayOrderId,
+          gatewayOrderId: gatewayOrderId,
+          amountPaise:
+              amountPaise ?? ApiConfig.rupeesToPaise(cart.grandTotal),
           keyId: keyId,
-          amountPaise: amountPaise,
           userEmail: authState.user?.email,
           userPhone: authState.phoneNumber,
           orderDescription:
@@ -238,12 +255,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             cart: cart,
             paymentMethod: PaymentMethodType.cod,
             deliveryAddress: address,
-            addressId: selectedAddr.id,
-            deliveryInstructions: instructions,
+            addressId: selectedAddr?.id,
+            deliveryInstructions: _noteController.text.trim(),
+            idempotencyKey: _getCheckoutIdempotencyKey(),
           );
 
       // Empty the cart after successful order creation
       await ref.read(cartProvider.notifier).clearCart();
+      _checkoutIdempotencyKey = null;
 
       if (!mounted) return;
       setState(() => _isProcessing = false);

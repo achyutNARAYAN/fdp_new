@@ -19,8 +19,10 @@ class StoreApiService {
     String? search,
   }) async {
     final qp = <String, dynamic>{
-      'lng': lng,
+      'latitude': lat,
+      'longitude': lng,
       'lat': lat,
+      'lng': lng,
     };
     if (category != null && category.isNotEmpty) qp['category'] = category;
     if (search != null && search.isNotEmpty) qp['search'] = search;
@@ -165,19 +167,35 @@ class StoreApiService {
       queryParams: qp.isNotEmpty ? qp : null,
     );
 
-    List<dynamic> itemsList = [];
+    List<Map<String, dynamic>> itemsList = [];
     if (res.data is List) {
-      itemsList = res.data as List;
+      itemsList = (res.data as List).whereType<Map<String, dynamic>>().toList();
     } else if (res.data is Map<String, dynamic>) {
       final map = res.data as Map<String, dynamic>;
       final possible = map['items'] ?? map['menu'] ?? map['data'];
-      if (possible is List) itemsList = possible;
+      if (possible is List) {
+        itemsList = possible.whereType<Map<String, dynamic>>().toList();
+      } else if (map['categories'] is List) {
+        for (final category in map['categories'] as List) {
+          if (category is! Map<String, dynamic> || category['items'] is! List) {
+            continue;
+          }
+          itemsList.addAll(
+            (category['items'] as List)
+                .whereType<Map<String, dynamic>>()
+                .map((item) => {
+                  ...item,
+                  'category': item['category'] ?? category['name'] ?? category['title'],
+                }),
+          );
+        }
+      }
     }
 
     return itemsList
         .map(
-          (e) => ItemModel.fromStoreMenuItemApi(
-            e as Map<String, dynamic>,
+          (item) => ItemModel.fromStoreMenuItemApi(
+            item,
             storeId: storeIdOrCode,
             storeName: storeName,
           ),
@@ -196,9 +214,18 @@ class StoreApiService {
   }) async {
     final qp = <String, dynamic>{
       'query': query,
-      'lng': lng ?? 77.088,
-      'lat': lat ?? 28.489,
     };
+    if (lng != null && lat != null) {
+      qp['longitude'] = lng;
+      qp['latitude'] = lat;
+      qp['lng'] = lng;
+      qp['lat'] = lat;
+    } else {
+      qp['lng'] = 77.088;
+      qp['lat'] = 28.489;
+      qp['longitude'] = 77.088;
+      qp['latitude'] = 28.489;
+    }
     if (category != null && category.isNotEmpty) qp['category'] = category;
     if (dietaryType != null && dietaryType.isNotEmpty) {
       qp['dietaryType'] = dietaryType;
@@ -210,19 +237,20 @@ class StoreApiService {
         queryParams: qp,
       );
 
-      List<dynamic> resultsList = [];
-      if (res.data is List) {
-        resultsList = res.data as List;
-      } else if (res.data is Map<String, dynamic>) {
-        final map = res.data as Map<String, dynamic>;
-        final possible = map['results'] ?? map['data'];
-        if (possible is List) resultsList = possible;
-      }
+      final data = res.data is Map<String, dynamic>
+          ? (res.data as Map<String, dynamic>)['results'] ??
+              (res.data as Map<String, dynamic>)['stores'] ??
+              (res.data as Map<String, dynamic>)['items'] ??
+              (res.data as Map<String, dynamic>)['data']
+          : res.data;
 
-      return resultsList
-          .whereType<Map<String, dynamic>>()
-          .map((e) => ShopWiseSearchResult.fromApi(e))
-          .toList();
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map((e) => ShopWiseSearchResult.fromApi(e))
+            .toList();
+      }
+      return const [];
     } catch (_) {
       return const [];
     }

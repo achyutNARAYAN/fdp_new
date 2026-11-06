@@ -26,12 +26,16 @@ class _ShopPageScreenState extends ConsumerState<ShopPageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final storesState = ref.watch(storesProvider);
-    final shop = storesState.stores
-        .where((s) => s.id == widget.shopId)
-        .firstOrNull;
+    final shopAsync = ref.watch(storeDetailsProvider(widget.shopId));
+    final shop = shopAsync.value;
     if (shop == null) {
-      return const Scaffold(body: Center(child: Text('Store not found.')));
+      return Scaffold(
+        body: Center(
+          child: shopAsync.hasError
+              ? Text('Could not load store: ${shopAsync.error}')
+              : const CircularProgressIndicator(),
+        ),
+      );
     }
 
     final favs = ref.watch(favoritesProvider);
@@ -48,6 +52,74 @@ class _ShopPageScreenState extends ConsumerState<ShopPageScreen> {
       if (_vegOnly && i.dietType != DietType.veg) return false;
       return true;
     }).toList();
+    final menuGroups = <String, List<ItemModel>>{};
+    for (final item in filteredItems) {
+      menuGroups.putIfAbsent(
+        item.category.isEmpty ? 'Other' : item.category,
+        () => <ItemModel>[],
+      ).add(item);
+    }
+    final menuSections = <Widget>[];
+    if (menuAsync.hasError) {
+      menuSections.add(
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimensions.p16),
+            child: Text('Could not load this menu: ${menuAsync.error}'),
+          ),
+        ),
+      );
+    } else if (menuGroups.isEmpty) {
+      menuSections.add(
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimensions.p32),
+            child: Center(
+              child: Text(
+                menuAsync.isLoading ? 'Loading menu…' : 'No menu items available.',
+                style: AppTypography.bodySmall,
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      for (final group in menuGroups.entries) {
+        menuSections.add(
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppDimensions.p16,
+                AppDimensions.p16,
+                AppDimensions.p16,
+                0,
+              ),
+              child: Text(group.key, style: AppTypography.sectionTitle),
+            ),
+          ),
+        );
+        menuSections.add(
+          SliverPadding(
+            padding: const EdgeInsets.all(AppDimensions.p16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.52,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final item = group.value[index];
+                return ItemCard(
+                  item: item,
+                  onTap: () => context.push('/item/${item.id}', extra: item),
+                );
+              }, childCount: group.value.length),
+            ),
+          ),
+        );
+      }
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -178,51 +250,44 @@ class _ShopPageScreenState extends ConsumerState<ShopPageScreen> {
                       if (shop.rating > 0 ||
                           shop.prepTimeMinutes.isNotEmpty ||
                           shop.distanceKm > 0)
-                        Row(
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 6,
                           children: [
                             if (shop.rating > 0)
-                              const Icon(
-                                Icons.star,
-                                size: 16,
-                                color: AppColors.accent,
-                              ),
-                            if (shop.rating > 0) const SizedBox(width: 4),
-                            if (shop.rating > 0)
-                              Text(
-                                '${shop.rating} (${shop.ratingCount}+)',
-                                style: AppTypography.itemName.copyWith(
-                                  fontSize: 14,
-                                ),
-                              ),
-                            if (shop.prepTimeMinutes.isNotEmpty)
-                              const SizedBox(width: 12),
-                            if (shop.prepTimeMinutes.isNotEmpty)
-                              const Text(
-                                '•',
-                                style: TextStyle(color: AppColors.neutral),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.star,
+                                    size: 16,
+                                    color: AppColors.accent,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${shop.rating} (${shop.ratingCount}+)',
+                                    style: AppTypography.itemName.copyWith(
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               ),
                             if (shop.prepTimeMinutes.isNotEmpty)
-                              const SizedBox(width: 12),
-                            if (shop.prepTimeMinutes.isNotEmpty)
-                              const Icon(
-                                Icons.timer_outlined,
-                                size: 16,
-                                color: AppColors.textSecondary,
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.timer_outlined,
+                                    size: 16,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    shop.prepTimeMinutes,
+                                    style: AppTypography.bodySmall,
+                                  ),
+                                ],
                               ),
-                            if (shop.prepTimeMinutes.isNotEmpty)
-                              const SizedBox(width: 4),
-                            if (shop.prepTimeMinutes.isNotEmpty)
-                              Text(
-                                shop.prepTimeMinutes,
-                                style: AppTypography.bodySmall,
-                              ),
-                            if (shop.distanceKm > 0) const SizedBox(width: 12),
-                            if (shop.distanceKm > 0)
-                              const Text(
-                                '•',
-                                style: TextStyle(color: AppColors.neutral),
-                              ),
-                            if (shop.distanceKm > 0) const SizedBox(width: 12),
                             if (shop.distanceKm > 0)
                               Text(
                                 '${shop.distanceKm} km away',
@@ -231,36 +296,6 @@ class _ShopPageScreenState extends ConsumerState<ShopPageScreen> {
                           ],
                         ),
                       const SizedBox(height: 12),
-
-                      // FSSAI Licence & GST
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryTint10,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.verified_user_outlined,
-                              size: 14,
-                              color: AppColors.textSecondary,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                'FSSAI Lic. ${shop.fssaiLicense} • GSTIN ${shop.gstin}',
-                                style: AppTypography.caption.copyWith(
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -341,39 +376,7 @@ class _ShopPageScreenState extends ConsumerState<ShopPageScreen> {
               ),
             ),
 
-            // Menu Items Grid (childAspectRatio 0.55 prevents vertical item overflow)
-            SliverPadding(
-              padding: const EdgeInsets.all(AppDimensions.p16),
-              sliver: filteredItems.isEmpty
-                  ? const SliverToBoxAdapter(
-                      child: Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(32),
-                          child: Text(
-                            'No items match your filter for this shop.',
-                            style: AppTypography.bodySmall,
-                          ),
-                        ),
-                      ),
-                    )
-                  : SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.52,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final item = filteredItems[index];
-                        return ItemCard(
-                          item: item,
-                          onTap: () =>
-                              context.push('/item/${item.id}', extra: item),
-                        );
-                      }, childCount: filteredItems.length),
-                    ),
-            ),
+            ...menuSections,
 
             const SliverToBoxAdapter(child: SizedBox(height: 60)),
           ],

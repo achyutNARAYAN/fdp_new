@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../features/item/models/item_model.dart';
 import '../../../features/cart/providers/cart_provider.dart';
 import '../badges/diet_marker.dart';
@@ -302,15 +303,19 @@ class ItemCard extends ConsumerWidget {
                 ref
                     .read(cartProvider.notifier)
                     .addItem(item: item, variant: variant);
-                ScaffoldMessenger.of(context).showSnackBar(
+                final messenger = ScaffoldMessenger.of(context);
+                final router = GoRouter.of(context);
+                messenger.showSnackBar(
                   SnackBar(
                     content: Text('Added "${item.name}" to cart'),
-                    duration: const Duration(milliseconds: 1400),
+                    duration: const Duration(milliseconds: 2000),
                     action: SnackBarAction(
                       label: 'View Cart',
                       textColor: AppColors.primaryTint20,
-                      onPressed: () =>
-                          ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+                      onPressed: () {
+                        messenger.hideCurrentSnackBar();
+                        router.push('/cart');
+                      },
                     ),
                   ),
                 );

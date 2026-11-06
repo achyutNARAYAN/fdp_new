@@ -109,13 +109,21 @@ class _WaitingConfirmationScreenState
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              _pollTimer?.cancel();
-              await ref.read(orderProvider.notifier).cancelOrderApi(
-                    orderId: widget.orderId,
-                    reason: 'Cancelled while awaiting confirmation',
+              try {
+                await ref.read(orderProvider.notifier).cancelOrderApi(
+                      orderId: widget.orderId,
+                      reason: 'Cancelled while awaiting confirmation',
+                    );
+                _pollTimer?.cancel();
+                if (mounted) {
+                  context.go('/order-details/${widget.orderId}');
+                }
+              } catch (error) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Could not cancel order: $error')),
                   );
-              if (mounted) {
-                context.go('/order-details/${widget.orderId}');
+                }
               }
             },
             child: const Text(

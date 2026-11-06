@@ -41,49 +41,32 @@ class DiscoveryFeedModel {
       return const [];
     }
 
-    List<ShopModel> tier1 = [];
-    List<ShopModel> tier2 = [];
-    List<ShopModel> tier3 = [];
-    List<ShopModel> iconic = [];
-
-    if (json['tiers'] is List) {
-      final tiers = json['tiers'] as List;
-      for (final t in tiers) {
-        if (t is Map<String, dynamic>) {
-          final code = t['tierCode']?.toString().toUpperCase() ?? '';
-          final stores = parseList(t['stores']);
-          if (code.contains('2KM') || code == 'TIER_1' || code == 'UNDER_2KM') {
-            tier1 = stores;
-          } else if (code.contains('2_TO_4') || code == 'TIER_2') {
-            tier2 = stores;
-          } else if (code.contains('4_TO_8') || code == 'TIER_3') {
-            tier3 = stores;
-          } else if (tier1.isEmpty) {
-            tier1 = stores;
-          } else if (tier2.isEmpty) {
-            tier2 = stores;
-          } else {
-            tier3 = stores;
-          }
+    final tiers = json['tiers'] is List
+        ? (json['tiers'] as List).whereType<Map<String, dynamic>>()
+        : const <Map<String, dynamic>>[];
+    List<ShopModel> storesFor(String tierCode) {
+      final stores = <dynamic>[];
+      for (final tier in tiers) {
+        if (tier['tierCode'] == tierCode && tier['stores'] is List) {
+          stores.addAll(tier['stores'] as List);
         }
       }
-    } else {
-      tier1 = parseList(json['tier1']);
-      tier2 = parseList(json['tier2']);
-      tier3 = parseList(json['tier3']);
+      return parseList(stores);
     }
 
-    if (json['featuredTopRated'] != null) {
-      iconic = parseList(json['featuredTopRated']);
-    } else if (json['iconicHalwais'] != null) {
-      iconic = parseList(json['iconicHalwais']);
-    }
+    final tier1 = parseList(json['tier1']);
+    final tier2 = parseList(json['tier2']);
+    final tier3 = parseList(json['tier3']);
+    final iconicHalwais = parseList(json['iconicHalwais']);
 
     return DiscoveryFeedModel(
-      tier1: tier1,
-      tier2: tier2,
-      tier3: tier3,
-      iconicHalwais: iconic,
+      tier1: tier1.isNotEmpty ? tier1 : storesFor('UNDER_2KM'),
+      tier2: tier2.isNotEmpty ? tier2 : storesFor('2_TO_4KM'),
+      tier3: tier3.isNotEmpty ? tier3 : storesFor('4_TO_8KM'),
+      iconicHalwais: iconicHalwais.isNotEmpty
+          ? iconicHalwais
+          : parseList(json['featuredTopRated']),
+    );
     );
   }
 }
@@ -99,12 +82,14 @@ class ShopWiseSearchResult {
   });
 
   factory ShopWiseSearchResult.fromApi(Map<String, dynamic> json) {
-    final rawStore = json['store'] is Map<String, dynamic>
-        ? json['store'] as Map<String, dynamic>
+    final storeData = json['store'] ?? json['shop'] ?? json;
+    final rawStore = storeData is Map<String, dynamic>
+        ? storeData
         : <String, dynamic>{};
 
     final store = ShopModel.fromApiJson(rawStore);
-    final rawItems = json['matchingItems'] is List ? json['matchingItems'] as List : const [];
+    final matchingItems = json['matchingItems'] ?? json['items'];
+    final rawItems = matchingItems is List ? matchingItems : const [];
 
     final items = rawItems
         .whereType<Map<String, dynamic>>()

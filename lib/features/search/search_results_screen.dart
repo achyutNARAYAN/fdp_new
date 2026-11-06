@@ -7,11 +7,9 @@ import '../../core/theme/app_dimensions.dart';
 import 'package:fdp/features/item/models/item_model.dart';
 import 'package:fdp/features/item/models/shop_model.dart';
 import 'package:fdp/features/item/models/diet_type.dart';
-import 'package:fdp/features/item/providers/catalog_provider.dart';
 import 'package:fdp/features/item/providers/store_provider.dart';
 import 'package:fdp/core/widgets/cards/item_card.dart';
 import 'package:fdp/core/widgets/cards/shop_card.dart';
-import 'package:fdp/core/providers/location_provider.dart';
 
 class SearchResultsScreen extends ConsumerStatefulWidget {
   final String query;
@@ -34,18 +32,6 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    if (widget.query.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final loc = ref.read(locationProvider);
-        final coords = loc.selectedAddress?.coordinates ?? loc.currentCoordinates;
-        ref.read(catalogProvider.notifier).loadCatalog(search: widget.query);
-        ref.read(storesProvider.notifier).loadStores(
-              search: widget.query,
-              nearLng: coords?.longitude,
-              nearLat: coords?.latitude,
-            );
-      });
-    }
   }
 
   @override
@@ -104,11 +90,16 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final catalogState = ref.watch(catalogProvider);
-    final storesState = ref.watch(storesProvider);
-
-    final rawItems = catalogState.items;
-    final rawShops = storesState.stores;
+    final searchAsync = ref.watch(shopWiseSearchProvider(widget.query));
+    if (searchAsync.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (searchAsync.hasError) {
+      return Scaffold(body: Center(child: Text(searchAsync.error.toString())));
+    }
+    final grouped = searchAsync.value ?? const [];
+    final rawItems = grouped.expand((result) => result.matchingItems).toList();
+    final rawShops = grouped.map((result) => result.store).toList();
 
     final items = _getFilteredItems(rawItems);
     final shops = _getFilteredShops(rawShops);

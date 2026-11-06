@@ -412,7 +412,6 @@ class OrderModel {
         final dynamic rawPaise = raw['customerPricePaise'] ??
             raw['unitPricePaise'] ??
             raw['pricePaise'] ??
-            raw['basePricePaise'] ??
             raw['mrpPaise'] ??
             raw['mrp'] ??
             raw['price'];

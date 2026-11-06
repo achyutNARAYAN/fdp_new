@@ -124,11 +124,20 @@ class ConfirmationTimeoutScreen extends ConsumerWidget {
                 label: 'Cancel Order',
                 borderColor: AppColors.accent,
                 textColor: AppColors.accent,
-                onPressed: () {
-                  ref
-                      .read(orderProvider.notifier)
-                      .cancelOrder(reason: 'Confirmation timed out');
-                  context.go('/order-details/$orderId');
+                onPressed: () async {
+                  try {
+                    await ref.read(orderProvider.notifier).cancelOrder(
+                          orderId: orderId,
+                          reason: 'Confirmation timed out',
+                        );
+                    if (context.mounted) context.go('/order-details/$orderId');
+                  } catch (error) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Could not cancel order: $error')),
+                      );
+                    }
+                  }
                 },
               ),
               const SizedBox(height: 8),

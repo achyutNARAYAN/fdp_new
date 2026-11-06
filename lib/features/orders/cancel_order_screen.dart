@@ -59,14 +59,18 @@ class _CancelOrderScreenState extends ConsumerState<CancelOrderScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await ref
-                  .read(orderProvider.notifier)
-                  .cancelOrderApi(
-                    orderId: order.orderId,
-                    reason: _selectedReason,
+              try {
+                await ref.read(orderProvider.notifier).cancelOrderApi(
+                      orderId: order.orderId,
+                      reason: _selectedReason,
+                    );
+                if (mounted) context.go('/order-details/${order.orderId}');
+              } catch (error) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Could not cancel order: $error')),
                   );
-              if (mounted) {
-                context.go('/order-details/${order.orderId}');
+                }
               }
             },
             child: const Text(

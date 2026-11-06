@@ -23,6 +23,23 @@ class ActiveOrderBanner extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
+    // Build human-readable item summary (e.g. "Sohan Papdi" or "Sohan Papdi +1 more")
+    final String itemSummaryText;
+    if (active.items.isNotEmpty) {
+      final firstItem = active.items.first;
+      final firstName = firstItem.item.name.trim();
+      final quantityPrefix = firstItem.quantity > 1 ? '${firstItem.quantity}x ' : '';
+      if (active.items.length == 1) {
+        itemSummaryText = '$quantityPrefix$firstName';
+      } else {
+        itemSummaryText = '$quantityPrefix$firstName +${active.items.length - 1} more';
+      }
+    } else if (active.orderNumber != null && active.orderNumber!.isNotEmpty) {
+      itemSummaryText = active.orderNumber!;
+    } else {
+      itemSummaryText = 'Order #${active.orderId.length > 8 ? active.orderId.substring(active.orderId.length - 6).toUpperCase() : active.orderId}';
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppDimensions.p16, vertical: 6),
       decoration: BoxDecoration(
@@ -63,14 +80,14 @@ class ActiveOrderBanner extends ConsumerWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              'Order #${active.orderNumber ?? (active.orderId.length > 8 ? active.orderId.substring(active.orderId.length - 6) : active.orderId)}',
+                              itemSummaryText,
                               style: AppTypography.itemName.copyWith(fontSize: 14),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Text('•', style: TextStyle(color: AppColors.textSecondary)),
+                          const Text('•', style: TextStyle(color: AppColors.textSecondary)),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
@@ -87,7 +104,9 @@ class ActiveOrderBanner extends ConsumerWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Estimated delivery in 20-25 min',
+                        active.shopName.isNotEmpty && active.shopName != 'Store'
+                            ? '${active.shopName} • Delivery in 20-25 min'
+                            : 'Estimated delivery in 20-25 min',
                         style: AppTypography.bodySmall.copyWith(fontSize: 12),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,

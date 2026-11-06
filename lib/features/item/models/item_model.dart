@@ -188,7 +188,6 @@ class ItemModel {
           final unit = p['unit']?.toString() ?? 'PORTION';
           final paise = p['customerPricePaise'] ??
               p['pricePaise'] ??
-              p['basePricePaise'] ??
               p['unitPricePaise'] ??
               p['price'] ??
               p['mrpPaise'] ??
@@ -212,11 +211,10 @@ class ItemModel {
       }
     }
 
-    // 2. If no pricing array, check flat price fields from backend (basePricePaise / customerPricePaise / mrpPaise)
+    // Only customer-facing prices belong in the app.
     if (variantsList.isEmpty) {
       final flatPaise = json['customerPricePaise'] ??
           json['pricePaise'] ??
-          json['basePricePaise'] ??
           json['unitPricePaise'] ??
           json['price'] ??
           json['mrpPaise'] ??
@@ -330,13 +328,7 @@ class ItemModel {
       for (int i = 0; i < pricingList.length; i++) {
         final p = pricingList[i] as Map<String, dynamic>;
         final unit = p['unit']?.toString() ?? 'PORTION';
-        final pricePaise = p['customerPricePaise'] ??
-            p['pricePaise'] ??
-            p['basePricePaise'] ??
-            p['unitPricePaise'] ??
-            p['price'] ??
-            p['mrpPaise'] ??
-            p['mrp'];
+        final pricePaise = p['customerPricePaise'];
         final double priceRupees = ApiConfig.paiseToRupees(pricePaise);
         if (priceRupees <= 0) continue;
         final mrpPaise = p['mrpPaise'] ?? p['mrp'] ?? pricePaise;
@@ -362,20 +354,8 @@ class ItemModel {
           catalogData['unit']?.toString() ??
           catalogData['baseUnit']?.toString() ??
           'PORTION';
-      final singlePricePaise = json['customerPricePaise'] ??
-          json['pricePaise'] ??
-          json['basePricePaise'] ??
-          json['unitPricePaise'] ??
-          json['price'] ??
-          json['mrpPaise'] ??
-          json['mrp'] ??
-          catalogData['customerPricePaise'] ??
-          catalogData['basePricePaise'] ??
-          catalogData['unitPricePaise'] ??
-          catalogData['pricePaise'] ??
-          catalogData['price'] ??
-          catalogData['mrpPaise'] ??
-          catalogData['mrp'];
+      final singlePricePaise =
+          json['customerPricePaise'] ?? catalogData['customerPricePaise'];
 
       final double singlePrice = ApiConfig.paiseToRupees(singlePricePaise);
       if (singlePrice > 0) {
