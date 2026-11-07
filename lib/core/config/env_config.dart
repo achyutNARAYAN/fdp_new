@@ -79,3 +79,30 @@ class EnvConfig {
   }
 }
 
+
+
+
+
+
+// # Food Delivery Platform (FDP) — Customer App Environment Configuration (Template)
+// # Copy this file to .env and configure your local or production credentials:
+// # cp .env.example .env
+
+// # Primary API Base URL (Local dev: http://localhost:4000/api/v1 | Prod: https://api.yourdomain.com/api/v1)
+// API_BASE_URL=https://fdp-tkl0.onrender.com/api/v1
+
+// # Root Server URL (for /health and /health/ready probes)
+// API_ROOT_URL=https://fdp-tkl0.onrender.com
+
+// # Razorpay Payment Gateway Key ID (rzp_test_... or rzp_live_...)
+// RAZORPAY_KEY_ID=rzp_test_Tvfe16OIBHNqTe
+
+// # Google OAuth Web Client ID (from Google Cloud Console)
+// GOOGLE_SERVER_CLIENT_ID=251374570662-1doulus75vv493d0o572e8vkndjdbtc0.apps.googleusercontent.com
+
+// # Enable full API request/response logging in terminal (true/false)
+// ENABLE_LOGGING=true
+
+// # Network Timeout in seconds
+// API_TIMEOUT_SECONDS=45
+
