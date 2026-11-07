@@ -67,7 +67,6 @@ class DiscoveryFeedModel {
           ? iconicHalwais
           : parseList(json['featuredTopRated']),
     );
-    );
   }
 }
 

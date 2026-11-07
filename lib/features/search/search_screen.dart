@@ -13,6 +13,7 @@ import '../../core/widgets/badges/diet_marker.dart';
 import '../../core/widgets/skeleton.dart';
 import '../item/models/item_model.dart';
 import '../item/models/shop_model.dart';
+import '../item/models/discovery_feed_model.dart';
 import '../item/providers/catalog_provider.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -119,7 +120,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             lng: coords?.longitude,
             lat: coords?.latitude,
           )
-          .catchError((_) => []);
+          .catchError((_) => <ShopWiseSearchResult>[]);
 
       final groupedResults = await storesFuture;
       if (currentSeq != _searchSeq || !mounted) return;
